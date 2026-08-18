@@ -19,8 +19,6 @@ async function initSupabase() {
 
     try {
         supabaseClient = window.supabase.createClient(url, key);
-        const setupBanner = document.getElementById("setup-banner");
-        if (setupBanner) setupBanner.classList.add("hidden");
 
         // Fetch custom admin password if configured
         const { data: settings } = await supabaseClient
@@ -39,7 +37,7 @@ async function initSupabase() {
 }
 
 // -----------------------------------------------------------------------------
-// CLIENT PORTAL (SEARCH & STATEMENT)
+// CLIENT PORTAL (SEARCH & 2-TAB DISPLAY)
 // -----------------------------------------------------------------------------
 async function searchClientAccount() {
     const phoneInput = document.getElementById("client-phone-input").value.trim();
@@ -67,42 +65,95 @@ async function searchClientAccount() {
 
         const customer = customers[0];
 
-        // Fetch Invoices matching either customer_name or customer_id
+        // Fetch Invoices
         const { data: invoices } = await supabaseClient
             .from("invoices")
             .select("*")
             .or(`customer_name.eq.${customer.name},customer_id.eq.${customer.id}`)
             .order("invoice_date", { ascending: true });
 
-        // Fetch Payments matching either customer_name or customer_id
+        // Fetch Invoice Items
+        const { data: allItems } = await supabaseClient
+            .from("invoice_items")
+            .select("*");
+
+        // Fetch Payments
         const { data: payments } = await supabaseClient
             .from("payments")
             .select("*")
             .or(`customer_name.eq.${customer.name},customer_id.eq.${customer.id}`)
             .order("payment_date", { ascending: true });
 
-        displayClientStatement(customer, invoices || [], payments || []);
+        displayClientData(customer, invoices || [], allItems || [], payments || []);
 
     } catch (err) {
         alert("حدث خطأ أثناء جلب البيانات: " + err.message);
     }
 }
 
-function displayClientStatement(customer, invoices, payments) {
+function displayClientData(customer, invoices, allItems, payments) {
     document.getElementById("client-name").innerText = customer.name;
     document.getElementById("client-phone").innerText = customer.phone || "-";
     document.getElementById("client-type").innerText = customer.customer_type || "-";
 
-    const operations = [];
     const openingBal = parseFloat(customer.opening_balance || 0);
+
+    // ---------------------------------------------------------
+    // TAB 1: بيان الطباعة وتفاصيل المقاسات
+    // ---------------------------------------------------------
+    const printsTbody = document.getElementById("client-prints-tbody");
+    printsTbody.innerHTML = "";
+
+    if (invoices.length === 0) {
+        printsTbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 font-semibold">لا توجد فواتير طباعة مسجلة حتى الآن</td></tr>`;
+    } else {
+        invoices.forEach(inv => {
+            // Find items for this invoice
+            const invItems = allItems.filter(itm => itm.product_id === inv.local_id || itm.invoice_id === inv.id);
+            let itemsSummary = "";
+
+            if (invItems.length > 0) {
+                const parts = invItems.map(itm => {
+                    const qty = parseInt(itm.quantity) || itm.quantity;
+                    const size = itm.size || itm.product_name || "طباعة";
+                    const pname = itm.product_name || "";
+                    if (pname && size && pname !== size) {
+                        return `${qty} (${size} ${pname})`;
+                    }
+                    return `${qty} (${size})`;
+                });
+                itemsSummary = parts.join(" + ");
+            } else {
+                itemsSummary = "طباعة وتصوير";
+            }
+
+            if (inv.discount > 0) {
+                itemsSummary += ` (خصم ${parseFloat(inv.discount).toFixed(2)} ج)`;
+            }
+
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-slate-50 transition";
+            tr.innerHTML = `
+                <td class="p-3 text-slate-500 font-semibold">${inv.invoice_date}</td>
+                <td class="p-3 font-bold text-slate-800">${itemsSummary}</td>
+                <td class="p-3 font-extrabold text-[#0F6B7A]">${parseFloat(inv.total || 0).toFixed(2)} ج</td>
+            `;
+            printsTbody.appendChild(tr);
+        });
+    }
+
+    // ---------------------------------------------------------
+    // TAB 2: كشف الحساب والمدفوعات
+    // ---------------------------------------------------------
+    const operations = [];
 
     if (openingBal !== 0) {
         operations.push({
             date: "رصيد سابق",
-            type: "رصيد افتتاحي",
-            desc: "رصيد افتتاحي سابق مسجل للعميل",
+            type: "رصيد افتتاحي سابق مسجل للعميل",
             required: openingBal > 0 ? openingBal : 0,
-            paid: openingBal < 0 ? Math.abs(openingBal) : 0
+            paid: openingBal < 0 ? Math.abs(openingBal) : 0,
+            paymentMethod: "-"
         });
     }
 
@@ -111,23 +162,25 @@ function displayClientStatement(customer, invoices, payments) {
         if (inv.discount > 0) desc += ` (شاملة خصم ${parseFloat(inv.discount).toFixed(2)}ج)`;
         operations.push({
             date: inv.invoice_date,
-            type: "فاتورة مبيعات",
-            desc: desc,
+            type: desc,
             required: parseFloat(inv.total || 0),
-            paid: 0
+            paid: 0,
+            paymentMethod: "-"
         });
     });
 
     payments.forEach(pay => {
-        let desc = `سداد (${pay.payment_method || 'نقدي'})`;
+        let desc = `سداد وتحصيل`;
         if (pay.discount > 0) desc += ` + خصم تسوية ${parseFloat(pay.discount).toFixed(2)}ج`;
-        if (pay.notes) desc += ` - ${pay.notes}`;
+        if (pay.notes) desc += ` (${pay.notes})`;
+        const payMethodStr = `${parseFloat(pay.amount || 0).toFixed(2)} ج (${pay.payment_method || 'نقدي'})`;
+
         operations.push({
             date: pay.payment_date,
-            type: "سداد دفعة / تحصيل",
-            desc: desc,
+            type: desc,
             required: 0,
-            paid: parseFloat(pay.amount || 0) + parseFloat(pay.discount || 0)
+            paid: parseFloat(pay.amount || 0) + parseFloat(pay.discount || 0),
+            paymentMethod: payMethodStr
         });
     });
 
@@ -135,8 +188,8 @@ function displayClientStatement(customer, invoices, payments) {
     let totalRequired = 0;
     let totalPaid = 0;
 
-    const tbody = document.getElementById("client-statement-tbody");
-    tbody.innerHTML = "";
+    const statementTbody = document.getElementById("client-statement-tbody");
+    statementTbody.innerHTML = "";
 
     operations.forEach(op => {
         balance += op.required - op.paid;
@@ -148,19 +201,33 @@ function displayClientStatement(customer, invoices, payments) {
         tr.innerHTML = `
             <td class="p-3 text-slate-500 font-semibold">${op.date}</td>
             <td class="p-3 font-bold text-slate-700">${op.type}</td>
-            <td class="p-3 text-slate-600">${op.desc}</td>
             <td class="p-3 font-bold text-red-600">${op.required > 0 ? op.required.toFixed(2) + ' ج' : '-'}</td>
-            <td class="p-3 font-bold text-emerald-600">${op.paid > 0 ? op.paid.toFixed(2) + ' ج' : '-'}</td>
+            <td class="p-3 font-bold text-emerald-600">${op.paid > 0 ? op.paymentMethod : '-'}</td>
             <td class="p-3 font-extrabold text-[#0F6B7A]">${balance.toFixed(2)} ج</td>
         `;
-        tbody.appendChild(tr);
+        statementTbody.appendChild(tr);
     });
 
+    // Summary Cards
     document.getElementById("client-total-req").innerText = totalRequired.toFixed(2) + " ج";
     document.getElementById("client-total-paid").innerText = totalPaid.toFixed(2) + " ج";
     document.getElementById("client-balance").innerText = balance.toFixed(2) + " ج";
 
     document.getElementById("client-result-section").classList.remove("hidden");
+}
+
+function switchClientTab(tab) {
+    if (tab === 'prints') {
+        document.getElementById("client-view-prints").classList.remove("hidden");
+        document.getElementById("client-view-statement").classList.add("hidden");
+        document.getElementById("tab-client-prints").className = "px-6 py-3 font-bold text-sm text-[#0F6B7A] border-b-2 border-[#0F6B7A] bg-white flex items-center gap-2";
+        document.getElementById("tab-client-statement").className = "px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700 flex items-center gap-2";
+    } else {
+        document.getElementById("client-view-prints").classList.add("hidden");
+        document.getElementById("client-view-statement").classList.remove("hidden");
+        document.getElementById("tab-client-statement").className = "px-6 py-3 font-bold text-sm text-[#0F6B7A] border-b-2 border-[#0F6B7A] bg-white flex items-center gap-2";
+        document.getElementById("tab-client-prints").className = "px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700 flex items-center gap-2";
+    }
 }
 
 // -----------------------------------------------------------------------------
