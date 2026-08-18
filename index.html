@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوابة الحسابات السحابية - Studio Accounts Cloud</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100 font-['Cairo'] text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-[#0F6B7A] text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <span class="text-2xl">📸</span>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">برنامج حسابات استوديو التصوير</h1>
+                    <p class="text-xs text-teal-100">البوابة السحابية المباشرة (Cloud Portal)</p>
+                </div>
+            </div>
+
+            <!-- Auth Status & Switcher -->
+            <div class="flex items-center gap-2">
+                <span id="role-badge" class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">بوابة العملاء (عرض فقط)</span>
+                <button id="auth-btn" onclick="toggleAuthModal()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-bold transition">
+                    🔐 تسجيل دخول الإدارة
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+        <!-- SETUP WARNING (If Supabase not connected yet) -->
+        <div id="setup-banner" class="hidden mb-6 p-4 bg-amber-50 border-r-4 border-amber-500 rounded-lg text-amber-900">
+            <h3 class="font-bold flex items-center gap-2">⚠️ يرجى ضبط إعدادات Supabase أولاً</h3>
+            <p class="text-sm mt-1">اضغط على زر <button onclick="openConfigModal()" class="font-bold underline">إعدادات الربط السحابي</button> وضع رابط ومفتاح مشروع Supabase للبدء.</p>
+        </div>
+
+        <!-- 1. CLIENT PORTAL SEARCH SECTION (Always visible for clients) -->
+        <section id="client-search-section" class="mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div class="max-w-xl mx-auto text-center">
+                <h2 class="text-lg font-bold text-slate-700 mb-2">🔍 استعلام عن كشف الحساب والفواتير</h2>
+                <p class="text-xs text-slate-500 mb-4">أدخل رقم الهاتف المسجل لدينا لعرض كشف حسابك وفواتيرك الحالية فوراً</p>
+                <div class="flex gap-2">
+                    <input type="text" id="client-phone-input" placeholder="أدخل رقم الهاتف (مثال: 01012345678)" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#0F6B7A] focus:outline-none text-center font-bold">
+                    <button onclick="searchClientAccount()" class="px-6 py-2.5 bg-[#0F6B7A] hover:bg-[#0B5966] text-white font-bold rounded-lg transition">
+                        عرض كشف الحساب
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. CLIENT ACCOUNT SUMMARY CARD (Shown when client enters phone) -->
+        <section id="client-result-section" class="hidden mb-8 space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex flex-wrap justify-between items-center pb-4 border-b border-slate-100 gap-4">
+                    <div>
+                        <span class="text-xs text-slate-400 font-semibold">اسم العميل</span>
+                        <h3 id="client-name" class="text-xl font-bold text-[#0F6B7A]">-</h3>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 font-semibold">رقم الهاتف</span>
+                        <p id="client-phone" class="font-bold text-slate-700">-</p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 font-semibold">نوع العميل</span>
+                        <p id="client-type" class="font-semibold text-slate-600">-</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                    <div class="p-4 bg-red-50 rounded-lg border border-red-100 text-center">
+                        <span class="text-xs font-bold text-red-600">إجمالي المطلوب (الفواتير والحساب)</span>
+                        <p id="client-total-req" class="text-xl font-bold text-red-700 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
+                        <span class="text-xs font-bold text-emerald-600">إجمالي المسدد والخصومات</span>
+                        <p id="client-total-paid" class="text-xl font-bold text-emerald-700 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                        <span class="text-xs font-bold text-blue-700">صافي الرصيد المتبقي عليك</span>
+                        <p id="client-balance" class="text-2xl font-extrabold text-[#0F6B7A] mt-1">0.00 ج</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Statement Table -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <span>📋</span> سجل العمليات والفواتير التفصيلي
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">التاريخ</th>
+                                <th class="p-3">نوع الحركة</th>
+                                <th class="p-3">البيان والتفاصيل</th>
+                                <th class="p-3 text-red-600">المطلوب (+)</th>
+                                <th class="p-3 text-emerald-600">المدفوع (-)</th>
+                                <th class="p-3 text-[#0F6B7A]">الرصيد المتبقي</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-statement-tbody" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. ADMIN FULL DASHBOARD SECTION (Shown only after admin login) -->
+        <section id="admin-dashboard-section" class="hidden space-y-6">
+            <!-- Stats Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs text-slate-400 font-bold">عدد العملاء</span>
+                    <p id="admin-stat-customers" class="text-2xl font-extrabold text-[#0F6B7A] mt-1">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs text-slate-400 font-bold">إجمالي مبيعات الفواتير</span>
+                    <p id="admin-stat-sales" class="text-2xl font-extrabold text-slate-800 mt-1">0.00 ج</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs text-slate-400 font-bold">إجمالي التحصيل</span>
+                    <p id="admin-stat-paid" class="text-2xl font-extrabold text-emerald-600 mt-1">0.00 ج</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <span class="text-xs text-slate-400 font-bold">إجمالي مديونيات العملاء</span>
+                    <p id="admin-stat-debts" class="text-2xl font-extrabold text-red-600 mt-1">0.00 ج</p>
+                </div>
+            </div>
+
+            <!-- Admin Navigation Tabs -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
+                    <button onclick="switchAdminTab('invoices')" id="tab-btn-invoices" class="px-6 py-3 font-bold text-sm text-[#0F6B7A] border-b-2 border-[#0F6B7A] bg-white">🧾 الفواتير الأخيرة</button>
+                    <button onclick="switchAdminTab('customers')" id="tab-btn-customers" class="px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700">👥 قائمة العملاء</button>
+                    <button onclick="switchAdminTab('payments')" id="tab-btn-payments" class="px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700">💵 سجل المدفوعات</button>
+                </div>
+
+                <!-- Tab 1: Invoices -->
+                <div id="admin-tab-invoices" class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-700">جميع فواتير المبيعات</h3>
+                        <button onclick="openNewInvoiceModal()" class="px-4 py-2 bg-[#0F6B7A] hover:bg-[#0B5966] text-white text-xs font-bold rounded-lg transition">➕ إضافة فاتورة جديدة</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">التاريخ والوقت</th>
+                                    <th class="p-3">العميل</th>
+                                    <th class="p-3">الإجمالي قبل الخصم</th>
+                                    <th class="p-3">الخصم</th>
+                                    <th class="p-3">الصافي</th>
+                                    <th class="p-3">المدفوع</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-invoices-tbody" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Customers -->
+                <div id="admin-tab-customers" class="p-6 hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-700">دليل العملاء والمديونيات</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">اسم العميل</th>
+                                    <th class="p-3">الهاتف</th>
+                                    <th class="p-3">النوع</th>
+                                    <th class="p-3">الرصيد الافتتاحي</th>
+                                    <th class="p-3">المديونية الحالية</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-customers-tbody" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Payments -->
+                <div id="admin-tab-payments" class="p-6 hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-700">سجل عمليات التحصيل والدفع</h3>
+                        <button onclick="openNewPaymentModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">➕ تسجيل سند دفع جديد</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3">اسم العميل</th>
+                                    <th class="p-3">المبلغ المحصل</th>
+                                    <th class="p-3">خصم التسوية</th>
+                                    <th class="p-3">طريقة الدفع</th>
+                                    <th class="p-3">ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-payments-tbody" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ADMIN LOGIN MODAL -->
+    <div id="auth-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">🔐 تسجيل دخول لوحة الإدارة</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-600 block mb-1">كلمة مرور الإدارة</label>
+                    <input type="password" id="admin-password-input" placeholder="أدخل كلمة المرور" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#0F6B7A] focus:outline-none">
+                </div>
+                <button onclick="verifyAdminLogin()" class="w-full py-2.5 bg-[#0F6B7A] hover:bg-[#0B5966] text-white font-bold rounded-lg transition">دخول</button>
+                <button onclick="toggleAuthModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg transition">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUPABASE CONFIG MODAL -->
+    <div id="config-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-xl text-right">
+            <h3 class="text-lg font-bold text-[#0F6B7A] mb-4">⚙️ إعدادات ربط Supabase</h3>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="font-bold text-slate-600 block mb-1">Supabase Project URL</label>
+                    <input type="text" id="config-url-input" placeholder="https://xyz.supabase.co" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#0F6B7A] focus:outline-none">
+                </div>
+                <div>
+                    <label class="font-bold text-slate-600 block mb-1">Supabase Anon Key</label>
+                    <input type="text" id="config-key-input" placeholder="eyJhbGciOi..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#0F6B7A] focus:outline-none">
+                </div>
+                <button onclick="saveSupabaseConfig()" class="w-full py-2.5 bg-[#0F6B7A] hover:bg-[#0B5966] text-white font-bold rounded-lg transition">حفظ والاتصال</button>
+                <button onclick="closeConfigModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-slate-800 text-slate-400 py-4 text-center text-xs mt-auto">
+        <p>نظام إدارة حسابات استوديو التصوير &copy; 2026 - مزامنة سحابية متكاملة</p>
+    </footer>
+
+    <!-- Application Script -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
