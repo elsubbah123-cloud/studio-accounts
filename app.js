@@ -1,28 +1,28 @@
 // ==============================================================================
-// STUDIO ACCOUNTS ERP - CLIENT & ADMIN WEB APP (SUPABASE + GITHUB PAGES)
+// حسابات ستوديو الصباح - البوابة السحابية المباشرة (SUPABASE + GITHUB PAGES)
 // ==============================================================================
+
+const SUPABASE_DEFAULT_URL = "https://uikxkghfjcykukauuowz.supabase.co";
+const SUPABASE_DEFAULT_KEY = "sb_publishable_zJSR4sB3dZr9dyUT4kTRBQ_ATl8YqNW";
+const ADMIN_DEFAULT_PASS = "admin123";
 
 let supabaseClient = null;
 let isAdminLoggedIn = false;
-const ADMIN_DEFAULT_PASS = "admin123";
 
 document.addEventListener("DOMContentLoaded", () => {
     initSupabase();
 });
 
 function initSupabase() {
-    const url = localStorage.getItem("supabase_url") || (window.ENV_CONFIG && window.ENV_CONFIG.SUPABASE_URL);
-    const key = localStorage.getItem("supabase_key") || (window.ENV_CONFIG && window.ENV_CONFIG.SUPABASE_KEY);
+    const url = localStorage.getItem("supabase_url") || SUPABASE_DEFAULT_URL;
+    const key = localStorage.getItem("supabase_key") || SUPABASE_DEFAULT_KEY;
 
-    if (url && key && url.startsWith("http")) {
-        try {
-            supabaseClient = window.supabase.createClient(url, key);
-            document.getElementById("setup-banner").classList.add("hidden");
-        } catch (e) {
-            console.error("Supabase init error:", e);
-        }
-    } else {
-        document.getElementById("setup-banner").classList.remove("hidden");
+    try {
+        supabaseClient = window.supabase.createClient(url, key);
+        const setupBanner = document.getElementById("setup-banner");
+        if (setupBanner) setupBanner.classList.add("hidden");
+    } catch (e) {
+        console.error("Supabase init error:", e);
     }
 }
 
@@ -37,9 +37,7 @@ async function searchClientAccount() {
     }
 
     if (!supabaseClient) {
-        alert("يرجى ضبط إعدادات Supabase أولاً");
-        openConfigModal();
-        return;
+        initSupabase();
     }
 
     try {
@@ -51,7 +49,7 @@ async function searchClientAccount() {
             .limit(1);
 
         if (cErr || !customers || customers.length === 0) {
-            alert("لم يتم العثور على عميل مسجل بهذا الرقم!");
+            alert("لم يتم العثور على عميل مسجل بهذا الرقم! يرجى التأكد من كتابة الرقم بشكل صحيح.");
             return;
         }
 
@@ -61,14 +59,14 @@ async function searchClientAccount() {
         const { data: invoices } = await supabaseClient
             .from("invoices")
             .select("*")
-            .eq("customer_id", customer.id)
+            .eq("customer_name", customer.name)
             .order("invoice_date", { ascending: true });
 
         // Fetch Payments
         const { data: payments } = await supabaseClient
             .from("payments")
             .select("*")
-            .eq("customer_id", customer.id)
+            .eq("customer_name", customer.name)
             .order("payment_date", { ascending: true });
 
         displayClientStatement(customer, invoices || [], payments || []);
@@ -185,7 +183,7 @@ function verifyAdminLogin() {
 }
 
 async function loadAdminDashboardData() {
-    if (!supabaseClient) return;
+    if (!supabaseClient) initSupabase();
 
     try {
         const { data: customers } = await supabaseClient.from("customers").select("*");
@@ -221,8 +219,8 @@ async function loadAdminDashboardData() {
         const custTbody = document.getElementById("admin-customers-tbody");
         custTbody.innerHTML = "";
         (customers || []).forEach(c => {
-            const cInvs = (invoices || []).filter(i => i.customer_id === c.id);
-            const cPays = (payments || []).filter(p => p.customer_id === c.id);
+            const cInvs = (invoices || []).filter(i => i.customer_name === c.name);
+            const cPays = (payments || []).filter(p => p.customer_name === c.name);
 
             const cTotInv = cInvs.reduce((s, i) => s + parseFloat(i.total || 0), 0);
             const cTotPay = cPays.reduce((s, p) => s + parseFloat(p.amount || 0) + parseFloat(p.discount || 0), 0);
@@ -277,8 +275,8 @@ function switchAdminTab(tab) {
 // -----------------------------------------------------------------------------
 function openConfigModal() {
     document.getElementById("config-modal").classList.remove("hidden");
-    document.getElementById("config-url-input").value = localStorage.getItem("supabase_url") || "";
-    document.getElementById("config-key-input").value = localStorage.getItem("supabase_key") || "";
+    document.getElementById("config-url-input").value = localStorage.getItem("supabase_url") || SUPABASE_DEFAULT_URL;
+    document.getElementById("config-key-input").value = localStorage.getItem("supabase_key") || SUPABASE_DEFAULT_KEY;
 }
 
 function closeConfigModal() {
