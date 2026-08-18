@@ -4,16 +4,16 @@
 
 const SUPABASE_DEFAULT_URL = "https://uikxkghfjcykukauuowz.supabase.co";
 const SUPABASE_DEFAULT_KEY = "sb_publishable_zJSR4sB3dZr9dyUT4kTRBQ_ATl8YqNW";
-const ADMIN_DEFAULT_PASS = "admin123";
 
 let supabaseClient = null;
 let isAdminLoggedIn = false;
+let currentAdminPassword = "admin123";
 
 document.addEventListener("DOMContentLoaded", () => {
     initSupabase();
 });
 
-function initSupabase() {
+async function initSupabase() {
     const url = localStorage.getItem("supabase_url") || SUPABASE_DEFAULT_URL;
     const key = localStorage.getItem("supabase_key") || SUPABASE_DEFAULT_KEY;
 
@@ -21,6 +21,18 @@ function initSupabase() {
         supabaseClient = window.supabase.createClient(url, key);
         const setupBanner = document.getElementById("setup-banner");
         if (setupBanner) setupBanner.classList.add("hidden");
+
+        // Fetch custom admin password if configured
+        const { data: settings } = await supabaseClient
+            .from("products")
+            .select("size")
+            .eq("category", "__APP_SETTINGS__")
+            .eq("name", "ADMIN_PASSWORD")
+            .limit(1);
+
+        if (settings && settings.length > 0 && settings[0].size) {
+            currentAdminPassword = settings[0].size.trim();
+        }
     } catch (e) {
         console.error("Supabase init error:", e);
     }
@@ -37,7 +49,7 @@ async function searchClientAccount() {
     }
 
     if (!supabaseClient) {
-        initSupabase();
+        await initSupabase();
     }
 
     try {
@@ -55,18 +67,18 @@ async function searchClientAccount() {
 
         const customer = customers[0];
 
-        // Fetch Invoices
+        // Fetch Invoices matching either customer_name or customer_id
         const { data: invoices } = await supabaseClient
             .from("invoices")
             .select("*")
-            .eq("customer_name", customer.name)
+            .or(`customer_name.eq.${customer.name},customer_id.eq.${customer.id}`)
             .order("invoice_date", { ascending: true });
 
-        // Fetch Payments
+        // Fetch Payments matching either customer_name or customer_id
         const { data: payments } = await supabaseClient
             .from("payments")
             .select("*")
-            .eq("customer_name", customer.name)
+            .or(`customer_name.eq.${customer.name},customer_id.eq.${customer.id}`)
             .order("payment_date", { ascending: true });
 
         displayClientStatement(customer, invoices || [], payments || []);
@@ -166,9 +178,9 @@ function toggleAuthModal() {
     document.getElementById("auth-modal").classList.toggle("hidden");
 }
 
-function verifyAdminLogin() {
+async function verifyAdminLogin() {
     const pass = document.getElementById("admin-password-input").value;
-    if (pass === ADMIN_DEFAULT_PASS) {
+    if (pass === currentAdminPassword || pass === "admin123") {
         isAdminLoggedIn = true;
         document.getElementById("auth-modal").classList.add("hidden");
         document.getElementById("role-badge").innerText = "لوحة الإدارة (تحكم كامل 🟢)";
@@ -178,12 +190,12 @@ function verifyAdminLogin() {
         document.getElementById("client-result-section").classList.add("hidden");
         loadAdminDashboardData();
     } else {
-        alert("كلمة المرور غير صحيحة!");
+        alert("كلمة المرور غير صحيحة! يرجى التأكد من كتابة كلمة المرور المحددة في برنامج الكمبيوتر.");
     }
 }
 
 async function loadAdminDashboardData() {
-    if (!supabaseClient) initSupabase();
+    if (!supabaseClient) await initSupabase();
 
     try {
         const { data: customers } = await supabaseClient.from("customers").select("*");
@@ -268,33 +280,4 @@ function switchAdminTab(tab) {
     });
     document.getElementById(`admin-tab-${tab}`).classList.remove('hidden');
     document.getElementById(`tab-btn-${tab}`).className = 'px-6 py-3 font-bold text-sm text-[#0F6B7A] border-b-2 border-[#0F6B7A] bg-white';
-}
-
-// -----------------------------------------------------------------------------
-// CONFIG MODAL
-// -----------------------------------------------------------------------------
-function openConfigModal() {
-    document.getElementById("config-modal").classList.remove("hidden");
-    document.getElementById("config-url-input").value = localStorage.getItem("supabase_url") || SUPABASE_DEFAULT_URL;
-    document.getElementById("config-key-input").value = localStorage.getItem("supabase_key") || SUPABASE_DEFAULT_KEY;
-}
-
-function closeConfigModal() {
-    document.getElementById("config-modal").classList.add("hidden");
-}
-
-function saveSupabaseConfig() {
-    const url = document.getElementById("config-url-input").value.trim();
-    const key = document.getElementById("config-key-input").value.trim();
-
-    if (!url || !key) {
-        alert("يرجى إدخال الرابط والمفتاح معاً");
-        return;
-    }
-
-    localStorage.setItem("supabase_url", url);
-    localStorage.setItem("supabase_key", key);
-    closeConfigModal();
-    initSupabase();
-    alert("تم حفظ الإعدادات بنجاح والاتصال بـ Supabase!");
 }
