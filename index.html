@@ -3,128 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حسابات ستوديو الصباح - البوابة السحابية</title>
+    <title>حسابات ستوديو الصباح - النظام السحابي المتكامل</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', Tahoma, sans-serif; background-color: #F4F7F9; color: #17212B; }
+        .tab-btn {
+            background-color: #E8EEF2;
+            color: #17212B;
+            border: 1px solid #C8D3DC;
+            border-bottom: none;
+            padding: 8px 18px;
+            font-weight: 700;
+            font-size: 13px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .tab-btn:hover { background-color: #DCE8EE; }
+        .tab-btn.active {
+            background-color: #0F6B7A;
+            color: #FFFFFF;
+            border-color: #0F6B7A;
+        }
+        .app-card {
+            background-color: #FFFFFF;
+            border: 1px solid #C8D3DC;
+            border-radius: 8px;
+        }
+        .btn-primary {
+            background-color: #0F6B7A;
+            color: #FFFFFF;
+            font-weight: 700;
+            border-radius: 6px;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .btn-primary:hover { background-color: #0B5966; }
+        .btn-secondary {
+            background-color: #E8EEF2;
+            color: #17212B;
+            border: 1px solid #C8D3DC;
+            font-weight: 700;
+            border-radius: 6px;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .btn-secondary:hover { background-color: #DCE8EE; }
+        .btn-danger {
+            background-color: #B4232A;
+            color: #FFFFFF;
+            font-weight: 700;
+            border-radius: 6px;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .btn-danger:hover { background-color: #8F1B21; }
+        .cat-btn {
+            background-color: #E8EEF2;
+            color: #17212B;
+            border: 1px solid #C8D3DC;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .cat-btn:hover, .cat-btn.active {
+            background-color: #0F6B7A;
+            color: #FFFFFF;
+            border-color: #0F6B7A;
+        }
+        .sub-btn {
+            background-color: #F7FAFC;
+            color: #0F6B7A;
+            border: 1px solid #0F6B7A;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .sub-btn:hover {
+            background-color: #0F6B7A;
+            color: #FFFFFF;
+        }
+        .app-input {
+            background-color: #FFFFFF;
+            border: 1px solid #C8D3DC;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #17212B;
+            outline: none;
+        }
+        .app-input:focus {
+            border-color: #0F6B7A;
+            box-shadow: 0 0 0 1px #0F6B7A;
+        }
+        .app-table thead {
+            background-color: #DCE8EE;
+            color: #17212B;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .app-table tbody tr {
+            background-color: #FFFFFF;
+            border-bottom: 1px solid #E8EEF2;
+            font-size: 12px;
+        }
+        .app-table tbody tr:nth-child(even) {
+            background-color: #F7FAFC;
+        }
+    </style>
 </head>
-<body class="bg-slate-100 font-['Cairo'] text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col antialiased">
 
-    <!-- Top Navigation Bar -->
+    <!-- Top Application Bar -->
     <header class="bg-[#0F6B7A] text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center space-x-3 space-x-reverse">
                 <span class="text-2xl">📸</span>
                 <div>
-                    <h1 class="text-xl font-bold leading-tight">حسابات ستوديو الصباح</h1>
-                    <p class="text-xs text-teal-100">البوابة السحابية المباشرة (Cloud Portal)</p>
+                    <h1 class="text-lg font-extrabold leading-tight">برنامج حسابات ستوديو الصباح</h1>
+                    <p class="text-[11px] text-teal-100">نظام إدارة الاستوديو السحابي المتكامل</p>
                 </div>
             </div>
 
-            <!-- Auth Status & Switcher -->
             <div class="flex items-center gap-2">
-                <span id="role-badge" class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">بوابة العملاء (عرض فقط)</span>
-                <button id="auth-btn" onclick="toggleAuthModal()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-bold transition">
+                <span id="role-badge" class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">بوابة العملاء (عرض فقط)</span>
+                <button id="auth-btn" onclick="toggleAuthModal()" class="px-4 py-1.5 bg-[#E7A13C] hover:bg-[#C78427] text-white rounded text-xs font-extrabold shadow transition">
                     🔐 تسجيل دخول الإدارة
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+    <!-- Main Workspace -->
+    <main class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-4">
 
-        <!-- 1. CLIENT PORTAL SEARCH SECTION -->
-        <section id="client-search-section" class="mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div class="max-w-xl mx-auto text-center">
-                <h2 class="text-lg font-bold text-slate-700 mb-2">🔍 استعلام عن كشف الحساب والمطبوعات</h2>
-                <p class="text-xs text-slate-500 mb-4">أدخل رقم الهاتف المسجل لدينا لعرض فواتيرك وتفاصيل مطبوعاتك وحسابك فوراً</p>
+        <!-- =============================================================== -->
+        <!-- 1. CLIENT PORTAL VIEW (FOR PUBLIC CUSTOMERS BY PHONE)           -->
+        <!-- =============================================================== -->
+        <section id="client-section" class="space-y-4">
+            <div class="app-card p-6 max-w-xl mx-auto text-center space-y-3">
+                <h2 class="text-base font-extrabold text-[#0F6B7A]">🔍 استعلام عن كشف الحساب والمطبوعات</h2>
+                <p class="text-xs text-[#5D6B78]">أدخل رقم الهاتف المسجل لدينا لعرض فواتيرك وتفاصيل مطبوعاتك وحسابك فوراً</p>
                 <div class="flex gap-2">
-                    <input type="text" id="client-phone-input" placeholder="أدخل رقم الهاتف (مثال: 01012345678)" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#0F6B7A] focus:outline-none text-center font-bold">
-                    <button onclick="searchClientAccount()" class="px-6 py-2.5 bg-[#0F6B7A] hover:bg-[#0B5966] text-white font-bold rounded-lg transition">
+                    <input type="text" id="client-phone-input" placeholder="أدخل رقم الهاتف (مثال: 01012345678)" class="app-input flex-1 text-center font-bold">
+                    <button onclick="searchClientAccount()" class="btn-primary px-6 py-2 text-xs font-bold">
                         عرض كشف الحساب
                     </button>
                 </div>
             </div>
-        </section>
 
-        <!-- 2. CLIENT ACCOUNT SUMMARY CARD (Shown when client enters phone) -->
-        <section id="client-result-section" class="hidden mb-8 space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <div class="flex flex-wrap justify-between items-center pb-4 border-b border-slate-100 gap-4">
-                    <div>
-                        <span class="text-xs text-slate-400 font-semibold">اسم العميل</span>
-                        <h3 id="client-name" class="text-xl font-bold text-[#0F6B7A]">-</h3>
+            <div id="client-result-section" class="hidden space-y-4">
+                <!-- Info Header -->
+                <div class="app-card p-5">
+                    <div class="flex flex-wrap justify-between items-center pb-3 border-b border-slate-200 gap-4">
+                        <div>
+                            <span class="text-xs text-[#5D6B78] font-bold">اسم العميل:</span>
+                            <span id="client-name" class="text-lg font-black text-[#0F6B7A] mr-2">-</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-[#5D6B78] font-bold">رقم الهاتف:</span>
+                            <span id="client-phone" class="font-bold text-slate-800 mr-2">-</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-[#5D6B78] font-bold">نوع العميل:</span>
+                            <span id="client-type" class="font-bold text-slate-700 mr-2">-</span>
+                        </div>
                     </div>
-                    <div>
-                        <span class="text-xs text-slate-400 font-semibold">رقم الهاتف</span>
-                        <p id="client-phone" class="font-bold text-slate-700">-</p>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-400 font-semibold">نوع العميل</span>
-                        <p id="client-type" class="font-semibold text-slate-600">-</p>
+
+                    <!-- 3 Metric Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                        <div class="p-3 bg-red-50 rounded-lg border border-red-200 text-center">
+                            <span class="text-xs font-bold text-[#B4232A]">🔴 إجمالي المطلوب (فواتير/سابق)</span>
+                            <p id="client-total-req" class="text-lg font-black text-[#B4232A] mt-1">0.00 ج</p>
+                        </div>
+                        <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                            <span class="text-xs font-bold text-emerald-700">🟢 إجمالي المسدد والخصومات</span>
+                            <p id="client-total-paid" class="text-lg font-black text-emerald-700 mt-1">0.00 ج</p>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                            <span class="text-xs font-bold text-[#0747A6]">🔵 صافي الحساب المتبقي عليك</span>
+                            <p id="client-balance" class="text-xl font-black text-[#0F6B7A] mt-1">0.00 ج</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-                    <div class="p-4 bg-red-50 rounded-lg border border-red-100 text-center">
-                        <span class="text-xs font-bold text-red-600">إجمالي المطلوب (الفواتير والحساب)</span>
-                        <p id="client-total-req" class="text-xl font-bold text-red-700 mt-1">0.00 ج</p>
+                <!-- Client 2 Tabs (Prints vs Statement) -->
+                <div class="app-card overflow-hidden">
+                    <div class="flex border-b border-[#C8D3DC] bg-[#E8EEF2] overflow-x-auto">
+                        <button onclick="switchClientTab('prints')" id="tab-client-prints" class="tab-btn active">
+                            🖼️ بيان الطباعة وتفاصيل المقاسات
+                        </button>
+                        <button onclick="switchClientTab('statement')" id="tab-client-statement" class="tab-btn">
+                            📋 كشف الحساب والمدفوعات
+                        </button>
                     </div>
-                    <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
-                        <span class="text-xs font-bold text-emerald-600">إجمالي المسدد والخصومات</span>
-                        <p id="client-total-paid" class="text-xl font-bold text-emerald-700 mt-1">0.00 ج</p>
-                    </div>
-                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
-                        <span class="text-xs font-bold text-blue-700">صافي الرصيد المتبقي عليك</span>
-                        <p id="client-balance" class="text-2xl font-extrabold text-[#0F6B7A] mt-1">0.00 ج</p>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Client Navigation Tabs (Print Orders Tab vs Account Statement Tab) -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
-                    <button onclick="switchClientTab('prints')" id="tab-client-prints" class="px-6 py-3 font-bold text-sm text-[#0F6B7A] border-b-2 border-[#0F6B7A] bg-white flex items-center gap-2">
-                        <span>🖼️</span> بيان الطباعة وتفاصيل المقاسات
-                    </button>
-                    <button onclick="switchClientTab('statement')" id="tab-client-statement" class="px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700 flex items-center gap-2">
-                        <span>📋</span> كشف الحساب والمدفوعات
-                    </button>
-                </div>
-
-                <!-- Tab 1: Print Orders Details -->
-                <div id="client-view-prints" class="p-6">
-                    <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <span>📸</span> سجل طلبات ومقاسات الطباعة والتصوير
-                    </h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <!-- Tab 1: Prints Details -->
+                    <div id="client-view-prints" class="p-4 overflow-x-auto">
+                        <table class="w-full text-right app-table">
+                            <thead>
                                 <tr>
                                     <th class="p-3">التاريخ</th>
-                                    <th class="p-3">البيان (تفاصيل المقاسات والأنواع المطبوعة)</th>
+                                    <th class="p-3">البيان وتفاصيل المطبوعات</th>
                                     <th class="p-3 text-[#0F6B7A]">الثمن (إجمالي الفاتورة)</th>
                                 </tr>
                             </thead>
-                            <tbody id="client-prints-tbody" class="divide-y divide-slate-100">
-                                <!-- Populated dynamically -->
-                            </tbody>
+                            <tbody id="client-prints-tbody"></tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- Tab 2: Full Statement & Payments -->
-                <div id="client-view-statement" class="p-6 hidden">
-                    <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <span>💵</span> سجل الحساب والمدفوعات وحركة الرصيد
-                    </h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <!-- Tab 2: Full Statement -->
+                    <div id="client-view-statement" class="p-4 hidden overflow-x-auto">
+                        <table class="w-full text-right app-table">
+                            <thead>
                                 <tr>
                                     <th class="p-3">التاريخ</th>
                                     <th class="p-3">نوع الحركة والبيان</th>
@@ -133,114 +236,404 @@
                                     <th class="p-3 text-[#0F6B7A]">الرصيد المتبقي</th>
                                 </tr>
                             </thead>
-                            <tbody id="client-statement-tbody" class="divide-y divide-slate-100">
-                                <!-- Populated dynamically -->
-                            </tbody>
+                            <tbody id="client-statement-tbody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 3. ADMIN FULL DASHBOARD SECTION (Shown only after admin login) -->
-        <section id="admin-dashboard-section" class="hidden space-y-6">
-            <!-- Stats Row -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                    <span class="text-xs text-slate-400 font-bold">عدد العملاء</span>
-                    <p id="admin-stat-customers" class="text-2xl font-extrabold text-[#0F6B7A] mt-1">0</p>
+        <!-- =============================================================== -->
+        <!-- 2. FULL ADMIN ERP (EXACT DESKTOP TAB ORDER & PIXEL MATCH)       -->
+        <!-- =============================================================== -->
+        <section id="admin-section" class="hidden space-y-3">
+            <!-- Exact Desktop Tab Navigation Bar -->
+            <div class="flex flex-wrap border-b border-[#C8D3DC] gap-1 overflow-x-auto pt-1">
+                <button onclick="switchAdminTab('dash')" id="adm-tab-dash" class="tab-btn active">📊 لوحة التحكم</button>
+                <button onclick="switchAdminTab('customers')" id="adm-tab-customers" class="tab-btn">👥 العملاء</button>
+                <button onclick="switchAdminTab('products')" id="adm-tab-products" class="tab-btn">🖼️ المنتجات والمقاسات</button>
+                <button onclick="switchAdminTab('invoices')" id="adm-tab-invoices" class="tab-btn">🧾 الفواتير</button>
+                <button onclick="switchAdminTab('payments')" id="adm-tab-payments" class="tab-btn">💵 المدفوعات</button>
+                <button onclick="switchAdminTab('report')" id="adm-tab-report" class="tab-btn">📈 تقرير الفواتير الشهري</button>
+                <button onclick="switchAdminTab('statement')" id="adm-tab-statement" class="tab-btn">📋 كشف حساب عميل</button>
+            </div>
+
+            <!-- =========================================================== -->
+            <!-- TAB 1: DASHBOARD                                            -->
+            <!-- =========================================================== -->
+            <div id="adm-view-dash" class="app-card p-6 space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="p-5 bg-[#F7FAFC] rounded-lg border border-[#C8D3DC]">
+                        <span class="text-xs font-bold text-[#5D6B78]">إجمالي العملاء</span>
+                        <p id="dash-stat-customers" class="text-2xl font-black text-[#0F6B7A] mt-1">0</p>
+                    </div>
+                    <div class="p-5 bg-[#F7FAFC] rounded-lg border border-[#C8D3DC]">
+                        <span class="text-xs font-bold text-[#5D6B78]">إجمالي مبيعات الفواتير</span>
+                        <p id="dash-stat-sales" class="text-2xl font-black text-slate-800 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="p-5 bg-[#F7FAFC] rounded-lg border border-[#C8D3DC]">
+                        <span class="text-xs font-bold text-emerald-700">إجمالي التحصيل</span>
+                        <p id="dash-stat-paid" class="text-2xl font-black text-emerald-700 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="p-5 bg-[#F7FAFC] rounded-lg border border-[#C8D3DC]">
+                        <span class="text-xs font-bold text-[#B4232A]">إجمالي مديونيات العملاء</span>
+                        <p id="dash-stat-debts" class="text-2xl font-black text-[#B4232A] mt-1">0.00 ج</p>
+                    </div>
                 </div>
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                    <span class="text-xs text-slate-400 font-bold">إجمالي مبيعات الفواتير</span>
-                    <p id="admin-stat-sales" class="text-2xl font-extrabold text-slate-800 mt-1">0.00 ج</p>
-                </div>
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                    <span class="text-xs text-slate-400 font-bold">إجمالي التحصيل</span>
-                    <p id="admin-stat-paid" class="text-2xl font-extrabold text-emerald-600 mt-1">0.00 ج</p>
-                </div>
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                    <span class="text-xs text-slate-400 font-bold">إجمالي مديونيات العملاء</span>
-                    <p id="admin-stat-debts" class="text-2xl font-extrabold text-red-600 mt-1">0.00 ج</p>
+
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="loadAllAdminData()" class="btn-primary px-5 py-2.5 text-xs font-bold">🔄 تحديث البيانات اللحظي</button>
                 </div>
             </div>
 
-            <!-- Admin Navigation Tabs -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
-                    <button onclick="switchAdminTab('invoices')" id="tab-btn-invoices" class="px-6 py-3 font-bold text-sm text-[#0F6B7A] border-b-2 border-[#0F6B7A] bg-white">🧾 الفواتير الأخيرة</button>
-                    <button onclick="switchAdminTab('customers')" id="tab-btn-customers" class="px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700">👥 قائمة العملاء</button>
-                    <button onclick="switchAdminTab('payments')" id="tab-btn-payments" class="px-6 py-3 font-bold text-sm text-slate-500 hover:text-slate-700">💵 سجل المدفوعات</button>
-                </div>
-
-                <!-- Tab 1: Invoices -->
-                <div id="admin-tab-invoices" class="p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-700">جميع فواتير المبيعات</h3>
+            <!-- =========================================================== -->
+            <!-- TAB 2: CUSTOMERS                                            -->
+            <!-- =========================================================== -->
+            <div id="adm-view-customers" class="p-4 hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div class="lg:col-span-4 app-card p-4 space-y-3">
+                        <h3 class="font-extrabold text-[#0F6B7A] text-sm border-b pb-2">بيانات العميل</h3>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">اسم العميل:</label>
+                            <input type="text" id="cust-name" placeholder="الاسم" class="app-input w-full">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">رقم الهاتف:</label>
+                            <input type="text" id="cust-phone" placeholder="010..." class="app-input w-full">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">نوع العميل:</label>
+                            <select id="cust-type" class="app-input w-full bg-white">
+                                <option value="استوديو">استوديو</option>
+                                <option value="فوتوجرافر">فوتوجرافر</option>
+                                <option value="عميل مباشر">عميل مباشر</option>
+                                <option value="أخرى">أخرى</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">الرصيد الافتتاحي:</label>
+                            <input type="number" id="cust-opening" value="0" step="0.5" class="app-input w-full">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">ملاحظات:</label>
+                            <input type="text" id="cust-notes" placeholder="اختياري" class="app-input w-full">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="saveCustomerOnline()" class="btn-primary flex-1 py-2 text-xs font-bold">➕ إضافة عميل</button>
+                            <button onclick="clearCustomerInputs()" class="btn-secondary px-3 py-2 text-xs font-bold">مسح</button>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+
+                    <div class="lg:col-span-8 app-card p-4 overflow-x-auto">
+                        <h3 class="font-extrabold text-slate-700 text-sm mb-3">دليل العملاء والمديونيات</h3>
+                        <table class="w-full text-right app-table">
+                            <thead>
                                 <tr>
-                                    <th class="p-3">التاريخ والوقت</th>
-                                    <th class="p-3">العميل</th>
-                                    <th class="p-3">الإجمالي قبل الخصم</th>
-                                    <th class="p-3">الخصم</th>
-                                    <th class="p-3">الصافي</th>
-                                    <th class="p-3">المدفوع</th>
+                                    <th class="p-2.5">اسم العميل</th>
+                                    <th class="p-2.5">الهاتف</th>
+                                    <th class="p-2.5">النوع</th>
+                                    <th class="p-2.5">الرصيد الافتتاحي</th>
+                                    <th class="p-2.5">الحساب المتبقي عليه</th>
+                                    <th class="p-2.5 text-center">إجراءات</th>
                                 </tr>
                             </thead>
-                            <tbody id="admin-invoices-tbody" class="divide-y divide-slate-100">
-                                <!-- Populated dynamically -->
-                            </tbody>
+                            <tbody id="adm-customers-tbody"></tbody>
                         </table>
                     </div>
                 </div>
+            </div>
 
-                <!-- Tab 2: Customers -->
-                <div id="admin-tab-customers" class="p-6 hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-700">دليل العملاء والمديونيات</h3>
+            <!-- =========================================================== -->
+            <!-- TAB 3: PRODUCTS & SIZES                                     -->
+            <!-- =========================================================== -->
+            <div id="adm-view-products" class="p-4 hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div class="lg:col-span-4 app-card p-4 space-y-3">
+                        <h3 class="font-extrabold text-[#0F6B7A] text-sm border-b pb-2">إضافة وتعديل المقاسات والأسعار</h3>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">التصنيف الرئيسي (مثال: مقاسات 13 أو تابلوهات):</label>
+                            <input type="text" id="prod-category" placeholder="التصنيف" class="app-input w-full">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">اسم المقاس / المنتج (مثال: 13x18):</label>
+                            <input type="text" id="prod-name" placeholder="المقاس" class="app-input w-full">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">السعر الافتراضي:</label>
+                            <input type="number" id="prod-price" value="0" step="0.5" class="app-input w-full">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="saveProductOnline()" class="btn-primary flex-1 py-2 text-xs font-bold">➕ حفظ المقاس</button>
+                            <button onclick="clearProductInputs()" class="btn-secondary px-3 py-2 text-xs font-bold">مسح</button>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+
+                    <div class="lg:col-span-8 app-card p-4 overflow-x-auto">
+                        <h3 class="font-extrabold text-slate-700 text-sm mb-3">قائمة المنتجات والمقاسات المتاحة</h3>
+                        <table class="w-full text-right app-table">
+                            <thead>
                                 <tr>
-                                    <th class="p-3">اسم العميل</th>
-                                    <th class="p-3">الهاتف</th>
-                                    <th class="p-3">النوع</th>
-                                    <th class="p-3">الرصيد الافتتاحي</th>
-                                    <th class="p-3">المديونية الحالية</th>
+                                    <th class="p-2.5">التصنيف</th>
+                                    <th class="p-2.5">المقاس / المنتج</th>
+                                    <th class="p-2.5 text-[#0F6B7A]">السعر الافتراضي</th>
+                                    <th class="p-2.5 text-center">حذف</th>
                                 </tr>
                             </thead>
-                            <tbody id="admin-customers-tbody" class="divide-y divide-slate-100">
-                                <!-- Populated dynamically -->
-                            </tbody>
+                            <tbody id="adm-products-tbody"></tbody>
                         </table>
                     </div>
                 </div>
+            </div>
 
-                <!-- Tab 3: Payments -->
-                <div id="admin-tab-payments" class="p-6 hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-700">سجل عمليات التحصيل والدفع</h3>
+            <!-- =========================================================== -->
+            <!-- TAB 4: INVOICES (SEARCH BOX REMOVED AS REQUESTED)            -->
+            <!-- =========================================================== -->
+            <div id="adm-view-invoices" class="p-4 hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- Left/Right Form Layout Matching Desktop -->
+                    <div class="lg:col-span-5 app-card p-4 space-y-3">
+                        <h3 class="font-extrabold text-[#0F6B7A] text-sm border-b pb-2">بيانات الفاتورة والعميل</h3>
+                        
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">العميل:</label>
+                            <select id="inv-cust-select" onchange="onInvoiceCustomerChanged()" class="app-input w-full bg-white"></select>
+                        </div>
+
+                        <div id="inv-cust-debt-banner" class="hidden p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs font-bold text-red-700">
+                            المديونية السابقة على العميل: <span id="inv-cust-debt-val">0.00 ج</span>
+                        </div>
+
+                        <!-- Clickable Category Buttons (13, 15, 20, ...) -->
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">المقاسات والتصنيفات الرئيسية:</label>
+                            <div id="inv-category-buttons" class="flex flex-wrap gap-1.5 mb-2"></div>
+                            <div id="inv-subsize-buttons" class="flex flex-wrap gap-1.5 p-2 bg-[#F7FAFC] rounded-lg border border-[#C8D3DC] min-h-[40px]"></div>
+                        </div>
+
+                        <!-- Item Inputs -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-xs font-bold text-[#5D6B78] block mb-1">الكمية:</label>
+                                <input type="number" id="inv-item-qty" value="1" min="1" oninput="calcItemTotal()" class="app-input w-full text-center">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-[#5D6B78] block mb-1">سعر الوحدة:</label>
+                                <input type="number" id="inv-item-price" value="0" step="0.5" oninput="calcItemTotal()" class="app-input w-full text-center">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-[#5D6B78] block mb-1">الإجمالي:</label>
+                                <input type="text" id="inv-item-total" value="0.00" readonly class="app-input w-full text-center bg-slate-100 text-[#0F6B7A]">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="addInvoiceItem()" class="btn-primary flex-1 py-2 text-xs font-bold">➕ إضافة بند</button>
+                            <button onclick="clearInvoiceItems()" class="btn-secondary px-3 py-2 text-xs font-bold">مسح البنود</button>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right text-sm">
-                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+
+                    <!-- Items Table and Summary -->
+                    <div class="lg:col-span-7 space-y-3">
+                        <div class="app-card overflow-hidden">
+                            <table class="w-full text-right app-table">
+                                <thead>
+                                    <tr>
+                                        <th class="p-2.5">المقاس / البند</th>
+                                        <th class="p-2.5 text-center">الكمية</th>
+                                        <th class="p-2.5 text-center">السعر</th>
+                                        <th class="p-2.5 text-center">الإجمالي</th>
+                                        <th class="p-2.5 text-center">حذف</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inv-items-tbody">
+                                    <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">لم تتم إضافة أي بنود بعد</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Invoice Summary Box -->
+                        <div class="app-card p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                            <div>
+                                <span class="text-xs text-slate-500 font-bold">الإجمالي قبل الخصم</span>
+                                <p id="inv-sum-subtotal" class="text-base font-black text-slate-800 mt-1">0.00 ج</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-red-600 font-bold">الخصم</span>
+                                <input type="number" id="inv-sum-discount" value="0" step="0.5" oninput="calcInvoiceFinal()" class="app-input w-full text-center font-bold text-red-600 mt-1">
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#0F6B7A] font-bold">الصافي المطلوب</span>
+                                <p id="inv-sum-total" class="text-base font-black text-[#0F6B7A] mt-1">0.00 ج</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-emerald-700 font-bold">المسدد الآن</span>
+                                <input type="number" id="inv-sum-paid" value="0" step="0.5" oninput="calcInvoiceFinal()" class="app-input w-full text-center font-bold text-emerald-700 mt-1">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button onclick="saveInvoiceOnline()" class="btn-primary flex-1 py-2.5 text-sm font-bold shadow">💾 حفظ الفاتورة أونلاين</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =========================================================== -->
+            <!-- TAB 5: PAYMENTS                                             -->
+            <!-- =========================================================== -->
+            <div id="adm-view-payments" class="p-4 hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div class="lg:col-span-4 app-card p-4 space-y-3">
+                        <h3 class="font-extrabold text-[#0F6B7A] text-sm border-b pb-2">تسجيل سند سداد وتحصيل</h3>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">العميل:</label>
+                            <select id="pay-cust-select" class="app-input w-full bg-white"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">المبلغ المحصل:</label>
+                            <input type="number" id="pay-amount" value="0" step="0.5" class="app-input w-full text-emerald-700 font-bold">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-red-600 block mb-1">خصم تسوية (إن وجد):</label>
+                            <input type="number" id="pay-discount" value="0" step="0.5" class="app-input w-full text-red-600 font-bold">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">طريقة الدفع:</label>
+                            <select id="pay-method" class="app-input w-full bg-white">
+                                <option value="نقدي">نقدي</option>
+                                <option value="فودافون كاش">فودافون كاش</option>
+                                <option value="إنستاباي">إنستاباي</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-[#5D6B78] block mb-1">ملاحظات وبيان:</label>
+                            <input type="text" id="pay-notes" placeholder="اختياري" class="app-input w-full">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="savePaymentOnline()" class="btn-primary flex-1 py-2 text-xs font-bold">💾 حفظ سند السداد</button>
+                            <button onclick="clearPaymentInputs()" class="btn-secondary px-3 py-2 text-xs font-bold">مسح</button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-8 app-card p-4 overflow-x-auto">
+                        <h3 class="font-extrabold text-slate-700 text-sm mb-3">سجل عمليات التحصيل والدفع</h3>
+                        <table class="w-full text-right app-table">
+                            <thead>
                                 <tr>
-                                    <th class="p-3">التاريخ</th>
-                                    <th class="p-3">اسم العميل</th>
-                                    <th class="p-3">المبلغ المحصل</th>
-                                    <th class="p-3">خصم التسوية</th>
-                                    <th class="p-3">طريقة الدفع</th>
-                                    <th class="p-3">ملاحظات</th>
+                                    <th class="p-2.5">التاريخ</th>
+                                    <th class="p-2.5">اسم العميل</th>
+                                    <th class="p-2.5 text-emerald-700">المبلغ</th>
+                                    <th class="p-2.5 text-red-600">الخصم</th>
+                                    <th class="p-2.5">الطريقة</th>
+                                    <th class="p-2.5">ملاحظات</th>
+                                    <th class="p-2.5 text-center">حذف</th>
                                 </tr>
                             </thead>
-                            <tbody id="admin-payments-tbody" class="divide-y divide-slate-100">
-                                <!-- Populated dynamically -->
-                            </tbody>
+                            <tbody id="adm-payments-tbody"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- =========================================================== -->
+            <!-- TAB 6: MONTHLY REPORT                                       -->
+            <!-- =========================================================== -->
+            <div id="adm-view-report" class="p-4 hidden space-y-4">
+                <div class="flex flex-wrap items-center gap-3 app-card p-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">الشهر:</label>
+                        <select id="rep-month-select" onchange="loadAdminMonthlyReport()" class="app-input bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">السنة:</label>
+                        <select id="rep-year-select" onchange="loadAdminMonthlyReport()" class="app-input bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">العميل:</label>
+                        <select id="rep-cust-select" onchange="loadAdminMonthlyReport()" class="app-input bg-white min-w-[180px]"></select>
+                    </div>
+                </div>
+
+                <!-- 5 Metric Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                    <div class="app-card p-3">
+                        <span class="text-xs text-slate-500 font-bold">عدد الفواتير</span>
+                        <p id="rep-card-count" class="text-lg font-black text-slate-800 mt-1">0</p>
+                    </div>
+                    <div class="app-card p-3">
+                        <span class="text-xs text-slate-500 font-bold">مبيعات الشهر</span>
+                        <p id="rep-card-sales" class="text-lg font-black text-slate-800 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="app-card p-3">
+                        <span class="text-xs text-emerald-700 font-bold">المحصل بالشهر</span>
+                        <p id="rep-card-paid" class="text-lg font-black text-emerald-700 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="app-card p-3">
+                        <span class="text-xs text-red-600 font-bold">خصومات الشهر</span>
+                        <p id="rep-card-discount" class="text-lg font-black text-red-600 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="app-card p-3">
+                        <span class="text-xs text-[#0F6B7A] font-bold">إجمالي المديونيات</span>
+                        <p id="rep-card-debt" class="text-lg font-black text-[#0F6B7A] mt-1">0.00 ج</p>
+                    </div>
+                </div>
+
+                <div class="app-card p-4 overflow-x-auto">
+                    <table class="w-full text-right app-table">
+                        <thead>
+                            <tr>
+                                <th class="p-2.5">التاريخ والوقت</th>
+                                <th class="p-2.5">العميل</th>
+                                <th class="p-2.5">الإجمالي قبل الخصم</th>
+                                <th class="p-2.5 text-red-600">الخصم</th>
+                                <th class="p-2.5 text-[#0F6B7A]">الصافي</th>
+                                <th class="p-2.5 text-emerald-700">المدفوع</th>
+                                <th class="p-2.5 text-center">حذف</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- =========================================================== -->
+            <!-- TAB 7: STATEMENT OF ACCOUNT                                 -->
+            <!-- =========================================================== -->
+            <div id="adm-view-statement" class="p-4 hidden space-y-4">
+                <div class="flex flex-wrap items-center gap-3 app-card p-3">
+                    <label class="text-xs font-bold text-slate-700">اختر العميل:</label>
+                    <select id="stmt-cust-select" onchange="loadAdminCustomerStatement()" class="app-input bg-white min-w-[220px]"></select>
+                </div>
+
+                <!-- 3 Summary Cards Matching Desktop -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                    <div class="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <span class="text-xs font-bold text-[#B4232A]">🔴 إجمالي المطلوب منه (فواتير/سابق)</span>
+                        <p id="stmt-req-val" class="text-lg font-black text-[#B4232A] mt-1">0.00 ج</p>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <span class="text-xs font-bold text-emerald-700">🟢 إجمالي المسدد منه والخصومات</span>
+                        <p id="stmt-paid-val" class="text-lg font-black text-emerald-700 mt-1">0.00 ج</p>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span class="text-xs font-bold text-[#0747A6]">🔵 صافي الحساب المتبقي عليه الآن</span>
+                        <p id="stmt-bal-val" class="text-xl font-black text-[#0F6B7A] mt-1">0.00 ج</p>
+                    </div>
+                </div>
+
+                <div class="app-card p-4 overflow-x-auto">
+                    <table class="w-full text-right app-table">
+                        <thead>
+                            <tr>
+                                <th class="p-2.5">التاريخ</th>
+                                <th class="p-2.5">نوع الحركة والبيان</th>
+                                <th class="p-2.5 text-red-600">المطلوب منه (+)</th>
+                                <th class="p-2.5 text-emerald-600">المدفوع منه (-)</th>
+                                <th class="p-2.5 text-[#0F6B7A]">الحساب المتبقي عليه</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stmt-tbody"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -248,24 +641,24 @@
 
     <!-- ADMIN LOGIN MODAL -->
     <div id="auth-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
-            <h3 class="text-lg font-bold text-slate-800 mb-4">🔐 تسجيل دخول لوحة الإدارة</h3>
+        <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl border border-[#C8D3DC]">
+            <h3 class="text-base font-extrabold text-[#0F6B7A] mb-3">🔐 تسجيل دخول لوحة الإدارة</h3>
             <div class="space-y-3">
                 <div>
-                    <label class="text-xs font-bold text-slate-600 block mb-1">كلمة مرور الإدارة</label>
-                    <input type="password" id="admin-password-input" placeholder="أدخل كلمة المرور" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#0F6B7A] focus:outline-none">
+                    <label class="text-xs font-bold text-slate-600 block mb-1">كلمة مرور الإدارة:</label>
+                    <input type="password" id="admin-password-input" placeholder="أدخل كلمة المرور" class="app-input w-full text-center">
                 </div>
-                <button onclick="verifyAdminLogin()" class="w-full py-2.5 bg-[#0F6B7A] hover:bg-[#0B5966] text-white font-bold rounded-lg transition">دخول</button>
-                <button onclick="toggleAuthModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg transition">إلغاء</button>
+                <button onclick="verifyAdminLogin()" class="btn-primary w-full py-2 text-xs font-bold shadow">دخول</button>
+                <button onclick="toggleAuthModal()" class="btn-secondary w-full py-2 text-xs font-bold">إلغاء</button>
             </div>
         </div>
     </div>
 
-    <footer class="bg-slate-800 text-slate-400 py-4 text-center text-xs mt-auto">
+    <footer class="bg-slate-800 text-slate-400 py-3 text-center text-xs mt-auto">
         <p>حسابات ستوديو الصباح &copy; 2026 - نظام الإدارة السحابي المتكامل</p>
     </footer>
 
-    <!-- Application Script -->
+    <!-- App Script -->
     <script src="app.js"></script>
 </body>
 </html>
