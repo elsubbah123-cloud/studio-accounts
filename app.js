@@ -1,5 +1,5 @@
 // ==============================================================================
-// حسابات ستوديو الصباح - نظام الويب المتكامل مع التحديث اللحظي الفوري (Realtime)
+// حسابات ستوديو الصباح - نظام الويب المتكامل مع كامل الصلاحيات والطباعة والتعديل
 // ==============================================================================
 
 const SUPABASE_DEFAULT_URL = "https://uikxkghfjcykukauuowz.supabase.co";
@@ -10,7 +10,7 @@ let isAdminLoggedIn = false;
 let currentAdminPassword = "admin123";
 let realtimeChannel = null;
 
-// Cache state
+// Global Cache State
 let dbCustomers = [];
 let dbProducts = [];
 let dbInvoices = [];
@@ -24,7 +24,7 @@ let currentClientSearchedCustomer = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     initSupabase();
-    // 3-second auto-poll fallback to ensure 100% instant sync everywhere
+    // 3-second auto-poll fallback to ensure instant sync
     setInterval(() => {
         if (isAdminLoggedIn) {
             loadAllAdminData(true);
@@ -41,7 +41,6 @@ async function initSupabase() {
     try {
         supabaseClient = window.supabase.createClient(url, key);
 
-        // Enable Supabase Realtime Subscription (WebSocket)
         try {
             if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
             realtimeChannel = supabaseClient.channel('realtime-all-sync')
@@ -54,10 +53,9 @@ async function initSupabase() {
                 })
                 .subscribe();
         } catch (rtErr) {
-            console.log("Realtime subscription fallback to polling:", rtErr);
+            console.log("Realtime fallback:", rtErr);
         }
 
-        // Fetch custom admin password if configured
         const { data: settings } = await supabaseClient
             .from("products")
             .select("size")
@@ -323,6 +321,7 @@ async function loadAllAdminData(isBackgroundSilent = false) {
         renderCustomersTable();
         renderPaymentsTable();
         renderProductsTable();
+        renderDailyInvoicesTable();
         initReportFilters();
 
         const activeTab = document.querySelector('.tab-btn.active');
@@ -360,7 +359,7 @@ function renderAdminDashboard() {
 }
 
 // -----------------------------------------------------------------------------
-// CUSTOMERS MANAGEMENT
+// CUSTOMERS MANAGEMENT (ADD / EDIT / DELETE)
 // -----------------------------------------------------------------------------
 function populateCustomerSelects() {
     const selects = ['inv-cust-select', 'pay-cust-select', 'stmt-cust-select', 'rep-cust-select'];
@@ -397,15 +396,32 @@ function renderCustomersTable() {
             <td class="p-2.5 text-slate-600">${c.customer_type || '-'}</td>
             <td class="p-2.5 text-slate-500">${parseFloat(c.opening_balance || 0).toFixed(2)} ج</td>
             <td class="p-2.5 font-extrabold ${bal > 0 ? 'text-red-600' : 'text-emerald-600'}">${bal.toFixed(2)} ج</td>
-            <td class="p-2.5 text-center">
-                <button onclick="deleteCustomerOnline(${c.id})" class="text-red-600 font-bold hover:underline">حذف</button>
+            <td class="p-2.5 text-center flex items-center justify-center gap-2">
+                <button onclick="editCustomerOnline(${c.id})" class="text-[#0F6B7A] font-bold hover:underline">✏️ تعديل</button>
+                <button onclick="deleteCustomerOnline(${c.id}, '${c.name.replace(/'/g, "\\'")}')" class="text-red-600 font-bold hover:underline">🗑️ حذف</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
+function editCustomerOnline(id) {
+    const c = dbCustomers.find(x => x.id === id);
+    if (!c) return;
+
+    document.getElementById("cust-edit-id").value = c.id;
+    document.getElementById("cust-name").value = c.name;
+    document.getElementById("cust-phone").value = c.phone || "";
+    document.getElementById("cust-type").value = c.customer_type || "استوديو";
+    document.getElementById("cust-opening").value = c.opening_balance || 0;
+    document.getElementById("cust-notes").value = c.notes || "";
+
+    document.getElementById("cust-form-title").innerText = "✏️ تعديل بيانات العميل";
+    document.getElementById("cust-save-btn").innerText = "💾 حفظ التعديل";
+}
+
 async function saveCustomerOnline() {
+    const editId = document.getElementById("cust-edit-id").value;
     const name = document.getElementById("cust-name").value.trim();
     const phone = document.getElementById("cust-phone").value.trim();
     const type = document.getElementById("cust-type").value;
@@ -418,13 +434,31 @@ async function saveCustomerOnline() {
     }
 
     try {
-        await supabaseClient.from("customers").insert([{
-            name: name,
-            phone: phone,
-            customer_type: type,
-            opening_balance: opening,
-            notes: notes
-        }]);
+        if (editId) {
+            const oldCust = dbCustomers.find(x => x.id == editId);
+            const oldName = oldCust ? oldCust.name : name;
+
+            await supabaseClient.from("customers").update({
+                name: name,
+                phone: phone,
+                customer_type: type,
+                opening_balance: opening,
+                notes: notes
+            }).eq("id", editId);
+
+            if (oldName !== name) {
+                await supabaseClient.from("invoices").update({ customer_name: name }).eq("customer_name", oldName);
+                await supabaseClient.from("payments").update({ customer_name: name }).eq("customer_name", oldName);
+            }
+        } else {
+            await supabaseClient.from("customers").insert([{
+                name: name,
+                phone: phone,
+                customer_type: type,
+                opening_balance: opening,
+                notes: notes
+            }]);
+        }
 
         clearCustomerInputs();
         await loadAllAdminData();
@@ -433,9 +467,11 @@ async function saveCustomerOnline() {
     }
 }
 
-async function deleteCustomerOnline(id) {
-    if (!confirm("هل أنت متأكد من رغبتك في حذف هذا العميل؟")) return;
+async function deleteCustomerOnline(id, name) {
+    if (!confirm(`هل أنت متأكد من حذف العميل: (${name})؟\nسيتم حذف جميع فواتيره ومدفوعاته أيضاً!`)) return;
     try {
+        await supabaseClient.from("invoices").delete().eq("customer_name", name);
+        await supabaseClient.from("payments").delete().eq("customer_name", name);
         await supabaseClient.from("customers").delete().eq("id", id);
         await loadAllAdminData();
     } catch (e) {
@@ -444,14 +480,17 @@ async function deleteCustomerOnline(id) {
 }
 
 function clearCustomerInputs() {
+    document.getElementById("cust-edit-id").value = "";
     document.getElementById("cust-name").value = "";
     document.getElementById("cust-phone").value = "";
     document.getElementById("cust-opening").value = "0";
     document.getElementById("cust-notes").value = "";
+    document.getElementById("cust-form-title").innerText = "بيانات العميل";
+    document.getElementById("cust-save-btn").innerText = "➕ إضافة عميل";
 }
 
 // -----------------------------------------------------------------------------
-// PRODUCTS & SIZES MANAGEMENT
+// PRODUCTS & SIZES MANAGEMENT (ADD / EDIT / DELETE)
 // -----------------------------------------------------------------------------
 function renderProductsTable() {
     const tbody = document.getElementById("adm-products-tbody");
@@ -462,15 +501,30 @@ function renderProductsTable() {
             <td class="p-2.5 font-bold text-slate-600">${p.category || 'عام'}</td>
             <td class="p-2.5 font-bold text-slate-800">${p.name}</td>
             <td class="p-2.5 font-black text-[#0F6B7A]">${parseFloat(p.default_unit_price || 0).toFixed(2)} ج</td>
-            <td class="p-2.5 text-center">
-                <button onclick="deleteProductOnline(${p.id})" class="text-red-600 font-bold hover:underline">حذف</button>
+            <td class="p-2.5 text-center flex items-center justify-center gap-2">
+                <button onclick="editProductOnline(${p.id})" class="text-[#0F6B7A] font-bold hover:underline">✏️ تعديل</button>
+                <button onclick="deleteProductOnline(${p.id}, '${p.name.replace(/'/g, "\\'")}')" class="text-red-600 font-bold hover:underline">🗑️ حذف</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
+function editProductOnline(id) {
+    const p = dbProducts.find(x => x.id === id);
+    if (!p) return;
+
+    document.getElementById("prod-edit-id").value = p.id;
+    document.getElementById("prod-category").value = p.category || "عام";
+    document.getElementById("prod-name").value = p.name;
+    document.getElementById("prod-price").value = p.default_unit_price || 0;
+
+    document.getElementById("prod-form-title").innerText = "✏️ تعديل بيانات المقاس";
+    document.getElementById("prod-save-btn").innerText = "💾 حفظ التعديل";
+}
+
 async function saveProductOnline() {
+    const editId = document.getElementById("prod-edit-id").value;
     const cat = document.getElementById("prod-category").value.trim() || "عام";
     const name = document.getElementById("prod-name").value.trim();
     const price = parseFloat(document.getElementById("prod-price").value) || 0;
@@ -481,12 +535,21 @@ async function saveProductOnline() {
     }
 
     try {
-        await supabaseClient.from("products").insert([{
-            category: cat,
-            name: name,
-            size: name,
-            default_unit_price: price
-        }]);
+        if (editId) {
+            await supabaseClient.from("products").update({
+                category: cat,
+                name: name,
+                size: name,
+                default_unit_price: price
+            }).eq("id", editId);
+        } else {
+            await supabaseClient.from("products").insert([{
+                category: cat,
+                name: name,
+                size: name,
+                default_unit_price: price
+            }]);
+        }
 
         clearProductInputs();
         await loadAllAdminData();
@@ -495,8 +558,8 @@ async function saveProductOnline() {
     }
 }
 
-async function deleteProductOnline(id) {
-    if (!confirm("هل أنت متأكد من حذف هذا المقاس؟")) return;
+async function deleteProductOnline(id, name) {
+    if (!confirm(`هل أنت متأكد من حذف المقاس: (${name})؟`)) return;
     try {
         await supabaseClient.from("products").delete().eq("id", id);
         await loadAllAdminData();
@@ -506,12 +569,16 @@ async function deleteProductOnline(id) {
 }
 
 function clearProductInputs() {
+    document.getElementById("prod-edit-id").value = "";
+    document.getElementById("prod-category").value = "";
     document.getElementById("prod-name").value = "";
     document.getElementById("prod-price").value = "0";
+    document.getElementById("prod-form-title").innerText = "إضافة وتعديل المقاسات والأسعار";
+    document.getElementById("prod-save-btn").innerText = "➕ حفظ المقاس";
 }
 
 // -----------------------------------------------------------------------------
-// INVOICES & SIZE BUTTONS
+// INVOICES & SIZE BUTTONS & PRINTING
 // -----------------------------------------------------------------------------
 function onInvoiceCustomerChanged() {
     const custName = document.getElementById("inv-cust-select").value;
@@ -600,47 +667,53 @@ function addInvoiceItem() {
     renderCurrentInvoiceTable();
 }
 
-function renderCurrentInvoiceTable() {
-    const tbody = document.getElementById("inv-items-tbody");
-    tbody.innerHTML = "";
-
-    if (currentInvoiceItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">لم تتم إضافة أي بنود بعد</td></tr>`;
-    } else {
-        currentInvoiceItems.forEach((itm, idx) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td class="p-2.5 font-bold text-slate-800">${itm.size || itm.name}</td>
-                <td class="p-2.5 text-center font-bold">${itm.quantity}</td>
-                <td class="p-2.5 text-center font-bold">${itm.unit_price.toFixed(2)}</td>
-                <td class="p-2.5 text-center font-black text-[#0F6B7A]">${itm.total.toFixed(2)}</td>
-                <td class="p-2.5 text-center">
-                    <button onclick="removeInvoiceItem(${idx})" class="text-red-600 font-bold hover:underline">حذف</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    calcInvoiceFinal();
-}
-
-function removeInvoiceItem(idx) {
-    currentInvoiceItems.splice(idx, 1);
+function removeInvoiceItem(index) {
+    currentInvoiceItems.splice(index, 1);
     renderCurrentInvoiceTable();
 }
 
 function clearInvoiceItems() {
     currentInvoiceItems = [];
     renderCurrentInvoiceTable();
+    document.getElementById("inv-sum-discount").value = "0";
+    document.getElementById("inv-sum-paid").value = "0";
+}
+
+function renderCurrentInvoiceTable() {
+    const tbody = document.getElementById("inv-items-tbody");
+    tbody.innerHTML = "";
+
+    if (currentInvoiceItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">لم تتم إضافة أي بنود بعد</td></tr>`;
+        document.getElementById("inv-sum-subtotal").innerText = "0.00 ج";
+        document.getElementById("inv-sum-total").innerText = "0.00 ج";
+        return;
+    }
+
+    let subtotal = 0;
+    currentInvoiceItems.forEach((itm, idx) => {
+        subtotal += itm.total;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td class="p-2.5 font-bold text-slate-800">${itm.size}</td>
+            <td class="p-2.5 text-center font-bold">${itm.quantity}</td>
+            <td class="p-2.5 text-center">${itm.unit_price.toFixed(2)}</td>
+            <td class="p-2.5 text-center font-bold text-[#0F6B7A]">${itm.total.toFixed(2)}</td>
+            <td class="p-2.5 text-center">
+                <button onclick="removeInvoiceItem(${idx})" class="text-red-500 font-bold hover:underline">حذف</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById("inv-sum-subtotal").innerText = subtotal.toFixed(2) + " ج";
+    calcInvoiceFinal();
 }
 
 function calcInvoiceFinal() {
-    const subtotal = currentInvoiceItems.reduce((s, itm) => s + itm.total, 0);
+    const subtotal = currentInvoiceItems.reduce((s, i) => s + i.total, 0);
     const discount = parseFloat(document.getElementById("inv-sum-discount").value) || 0;
     const total = Math.max(0, subtotal - discount);
-
-    document.getElementById("inv-sum-subtotal").innerText = subtotal.toFixed(2) + " ج";
     document.getElementById("inv-sum-total").innerText = total.toFixed(2) + " ج";
 }
 
@@ -655,58 +728,179 @@ async function saveInvoiceOnline() {
         return;
     }
 
-    const subtotal = currentInvoiceItems.reduce((s, itm) => s + itm.total, 0);
+    const subtotal = currentInvoiceItems.reduce((s, i) => s + i.total, 0);
     const discount = parseFloat(document.getElementById("inv-sum-discount").value) || 0;
     const total = Math.max(0, subtotal - discount);
     const paid = parseFloat(document.getElementById("inv-sum-paid").value) || 0;
-
     const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10) + " " + now.toTimeString().slice(0, 5);
+    const invoiceDate = now.toISOString().slice(0, 19).replace('T', ' ');
 
     try {
-        const { data: invData, error: iErr } = await supabaseClient.from("invoices").insert([{
+        const { data: invRes, error: invErr } = await supabaseClient.from("invoices").insert([{
             customer_name: custName,
-            invoice_date: dateStr,
+            invoice_date: invoiceDate,
             subtotal: subtotal,
             discount: discount,
             total: total,
             paid_amount: paid
         }]).select();
 
-        if (iErr) throw iErr;
-        const invId = invData[0].id;
+        if (invErr) throw invErr;
 
-        const itemsPayload = currentInvoiceItems.map(itm => ({
-            invoice_id: invId,
-            product_name: itm.name,
-            size: itm.size,
-            quantity: itm.quantity,
-            unit_price: itm.unit_price,
-            total: itm.total
-        }));
-        await supabaseClient.from("invoice_items").insert(itemsPayload);
+        const newInvId = invRes && invRes.length > 0 ? invRes[0].id : null;
 
-        if (paid > 0) {
-            await supabaseClient.from("payments").insert([{
-                customer_name: custName,
-                invoice_id: invId,
-                payment_date: dateStr.slice(0, 10),
-                amount: paid,
-                discount: 0,
-                payment_method: "نقدي",
-                notes: `دفعة فورية مع الفاتورة #${invId}`
-            }]);
+        if (newInvId) {
+            const itemsToInsert = currentInvoiceItems.map(itm => ({
+                invoice_id: newInvId,
+                product_name: itm.name,
+                size: itm.size,
+                quantity: itm.quantity,
+                unit_price: itm.unit_price,
+                total: itm.total
+            }));
+            await supabaseClient.from("invoice_items").insert(itemsToInsert);
+
+            if (paid > 0) {
+                await supabaseClient.from("payments").insert([{
+                    customer_name: custName,
+                    payment_date: invoiceDate.slice(0, 10),
+                    amount: paid,
+                    discount: 0,
+                    payment_method: "نقدي",
+                    notes: `دفعة نقدية مع الفاتورة #${newInvId}`
+                }]);
+            }
         }
 
         clearInvoiceItems();
         await loadAllAdminData();
+        alert("تم حفظ الفاتورة أونلاين بنجاح! 🧾✨");
     } catch (e) {
         alert("خطأ أثناء حفظ الفاتورة: " + e.message);
     }
 }
 
+function renderDailyInvoicesTable() {
+    const tbody = document.getElementById("adm-daily-invoices-tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (dbInvoices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">لا توجد فواتير مسجلة</td></tr>`;
+        return;
+    }
+
+    dbInvoices.slice(0, 50).forEach(inv => {
+        const rem = parseFloat(inv.total || 0) - parseFloat(inv.paid_amount || 0);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td class="p-2.5 font-semibold text-slate-600">${inv.invoice_date}</td>
+            <td class="p-2.5 font-bold text-slate-800">${inv.customer_name}</td>
+            <td class="p-2.5 text-center font-black text-[#0F6B7A]">${parseFloat(inv.total || 0).toFixed(2)} ج</td>
+            <td class="p-2.5 text-center font-bold text-emerald-700">${parseFloat(inv.paid_amount || 0).toFixed(2)} ج</td>
+            <td class="p-2.5 text-center font-bold ${rem > 0 ? 'text-red-600' : 'text-slate-600'}">${rem.toFixed(2)} ج</td>
+            <td class="p-2.5 text-center flex items-center justify-center gap-2">
+                <button onclick="printInvoiceOnline(${inv.id})" class="text-[#0F6B7A] font-bold hover:underline">🖨️ طباعة</button>
+                <button onclick="deleteInvoiceOnline(${inv.id}, '${inv.customer_name}', '${inv.invoice_date}', ${inv.total})" class="text-red-600 font-bold hover:underline">🗑️ حذف</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function deleteInvoiceOnline(invId, cname, idate, tot) {
+    if (!confirm(`هل أنت متأكد من حذف الفاتورة رقم #${invId} للعميل (${cname})؟`)) return;
+    try {
+        await supabaseClient.from("invoice_items").delete().eq("invoice_id", invId);
+        await supabaseClient.from("invoices").delete().eq("id", invId);
+        await supabaseClient.from("payments").delete().ilike("notes", `%#${invId}%`);
+        await loadAllAdminData();
+    } catch (e) {
+        alert("خطأ في حذف الفاتورة: " + e.message);
+    }
+}
+
+function printInvoiceOnline(invId) {
+    const inv = dbInvoices.find(x => x.id === invId);
+    if (!inv) return;
+
+    const items = dbInvoiceItems.filter(x => x.invoice_id === invId || x.product_id === inv.local_id);
+    const customer = dbCustomers.find(x => x.name === inv.customer_name);
+
+    let rowsHtml = items.map((itm, idx) => `
+        <tr style="border-bottom: 1px solid #ddd; text-align: center;">
+            <td style="padding: 8px;">${idx + 1}</td>
+            <td style="padding: 8px; text-align: right;">${itm.size || itm.product_name}</td>
+            <td style="padding: 8px;">${itm.quantity}</td>
+            <td style="padding: 8px;">${parseFloat(itm.unit_price || 0).toFixed(2)}</td>
+            <td style="padding: 8px; font-weight: bold;">${parseFloat(itm.total || 0).toFixed(2)}</td>
+        </tr>
+    `).join("");
+
+    const printWin = window.open("", "_blank");
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <title>فاتورة مبيعات #${inv.id}</title>
+            <style>
+                body { font-family: 'Cairo', Tahoma, sans-serif; padding: 20px; direction: rtl; color: #17212B; }
+                .header { text-align: center; border-bottom: 2px solid #0F6B7A; padding-bottom: 10px; margin-bottom: 20px; }
+                .title { font-size: 22px; font-weight: bold; color: #0F6B7A; }
+                .meta { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th { background-color: #E8EEF2; color: #17212B; padding: 8px; border: 1px solid #C8D3DC; }
+                td { border: 1px solid #C8D3DC; }
+                .totals { margin-top: 20px; width: 300px; float: left; border: 1px solid #C8D3DC; padding: 10px; border-radius: 6px; }
+                .totals div { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+                @media print { button { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">ستوديو الصباح للتصوير والطباعة</div>
+                <div>فاتورة مبيعات وطباعة رسمية</div>
+            </div>
+            <div class="meta">
+                <div>العميل: ${inv.customer_name} ${customer && customer.phone ? `(${customer.phone})` : ''}</div>
+                <div>التاريخ: ${inv.invoice_date}</div>
+                <div>رقم الفاتورة: #${inv.id}</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>م</th>
+                        <th>البيان والمقاس</th>
+                        <th>الكمية</th>
+                        <th>السعر</th>
+                        <th>الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            <div class="totals">
+                <div><span>الإجمالي:</span> <span>${parseFloat(inv.subtotal || inv.total).toFixed(2)} ج</span></div>
+                <div><span>الخصم:</span> <span>${parseFloat(inv.discount || 0).toFixed(2)} ج</span></div>
+                <div style="color: #0F6B7A; font-size: 16px;"><span>الصافي المطلوب:</span> <span>${parseFloat(inv.total || 0).toFixed(2)} ج</span></div>
+                <div><span>المدفوع:</span> <span>${parseFloat(inv.paid_amount || 0).toFixed(2)} ج</span></div>
+            </div>
+            <div style="clear: both; text-align: center; margin-top: 40px; font-size: 12px; color: #777;">
+                شكراً لتعاملكم معنا - ستوديو الصباح
+            </div>
+            <script>
+                window.onload = function() { window.print(); }
+            </script>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+}
+
 // -----------------------------------------------------------------------------
-// PAYMENTS MANAGEMENT
+// PAYMENTS MANAGEMENT (ADD / EDIT / DELETE)
 // -----------------------------------------------------------------------------
 function renderPaymentsTable() {
     const tbody = document.getElementById("adm-payments-tbody");
@@ -714,156 +908,202 @@ function renderPaymentsTable() {
     dbPayments.forEach(p => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td class="p-2.5 text-slate-500">${p.payment_date}</td>
-            <td class="p-2.5 font-bold text-slate-800">${p.customer_name || '-'}</td>
-            <td class="p-2.5 font-bold text-emerald-600">${parseFloat(p.amount || 0).toFixed(2)} ج</td>
+            <td class="p-2.5 font-semibold text-slate-600">${p.payment_date}</td>
+            <td class="p-2.5 font-bold text-slate-800">${p.customer_name}</td>
+            <td class="p-2.5 font-bold text-emerald-700">${parseFloat(p.amount || 0).toFixed(2)} ج</td>
             <td class="p-2.5 font-bold text-red-600">${parseFloat(p.discount || 0).toFixed(2)} ج</td>
             <td class="p-2.5 text-slate-600">${p.payment_method || 'نقدي'}</td>
-            <td class="p-2.5 text-slate-500">${p.notes || '-'}</td><td class="p-2.5 text-center"><button onclick="deletePaymentOnline(${p.id})" class="text-red-600 font-bold hover:underline">حذف</button></td>
+            <td class="p-2.5 text-slate-500 text-xs">${p.notes || '-'}</td>
+            <td class="p-2.5 text-center flex items-center justify-center gap-2">
+                <button onclick="editPaymentOnline(${p.id})" class="text-[#0F6B7A] font-bold hover:underline">✏️ تعديل</button>
+                <button onclick="deletePaymentOnline(${p.id})" class="text-red-600 font-bold hover:underline">🗑️ حذف</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
+function editPaymentOnline(id) {
+    const p = dbPayments.find(x => x.id === id);
+    if (!p) return;
+
+    document.getElementById("pay-edit-id").value = p.id;
+    document.getElementById("pay-cust-select").value = p.customer_name;
+    document.getElementById("pay-amount").value = p.amount || 0;
+    document.getElementById("pay-discount").value = p.discount || 0;
+    document.getElementById("pay-method").value = p.payment_method || "نقدي";
+    document.getElementById("pay-notes").value = p.notes || "";
+
+    document.getElementById("pay-form-title").innerText = "✏️ تعديل سند سداد";
+    document.getElementById("pay-save-btn").innerText = "💾 حفظ التعديل";
+}
+
 async function savePaymentOnline() {
+    const editId = document.getElementById("pay-edit-id").value;
     const custName = document.getElementById("pay-cust-select").value;
     const amount = parseFloat(document.getElementById("pay-amount").value) || 0;
     const discount = parseFloat(document.getElementById("pay-discount").value) || 0;
     const method = document.getElementById("pay-method").value;
     const notes = document.getElementById("pay-notes").value.trim();
 
+    if (!custName) {
+        alert("يرجى اختيار العميل أولاً");
+        return;
+    }
     if (amount <= 0 && discount <= 0) {
-        alert("يرجى إدخال مبلغ التحصيل أو الخصم");
+        alert("يرجى كتابة المبلغ المحصل أو الخصم");
         return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+
     try {
-        await supabaseClient.from("payments").insert([{
-            customer_name: custName,
-            payment_date: todayStr,
-            amount: amount,
-            discount: discount,
-            payment_method: method,
-            notes: notes
-        }]);
+        if (editId) {
+            await supabaseClient.from("payments").update({
+                customer_name: custName,
+                amount: amount,
+                discount: discount,
+                payment_method: method,
+                notes: notes
+            }).eq("id", editId);
+        } else {
+            await supabaseClient.from("payments").insert([{
+                customer_name: custName,
+                payment_date: today,
+                amount: amount,
+                discount: discount,
+                payment_method: method,
+                notes: notes
+            }]);
+        }
 
         clearPaymentInputs();
         await loadAllAdminData();
     } catch (e) {
-        alert("خطأ أثناء الحفظ: " + e.message);
+        alert("خطأ: " + e.message);
+    }
+}
+
+async function deletePaymentOnline(id) {
+    if (!confirm("هل أنت متأكد من حذف هذا السند؟")) return;
+    try {
+        await supabaseClient.from("payments").delete().eq("id", id);
+        await loadAllAdminData();
+    } catch (e) {
+        alert("خطأ في الحذف: " + e.message);
     }
 }
 
 function clearPaymentInputs() {
+    document.getElementById("pay-edit-id").value = "";
     document.getElementById("pay-amount").value = "0";
     document.getElementById("pay-discount").value = "0";
     document.getElementById("pay-notes").value = "";
+    document.getElementById("pay-form-title").innerText = "تسجيل وتعديل سند سداد";
+    document.getElementById("pay-save-btn").innerText = "💾 حفظ سند السداد";
 }
 
 // -----------------------------------------------------------------------------
 // MONTHLY REPORT
 // -----------------------------------------------------------------------------
 function initReportFilters() {
-    const mSelect = document.getElementById("rep-month-select");
-    const ySelect = document.getElementById("rep-year-select");
-    if (!mSelect || !ySelect) return;
-
-    const curMVal = mSelect.value;
-    const curYVal = ySelect.value;
-
-    mSelect.innerHTML = "";
-    ySelect.innerHTML = "";
+    const mSel = document.getElementById("rep-month-select");
+    const ySel = document.getElementById("rep-year-select");
+    if (!mSel || !ySel || mSel.children.length > 0) return;
 
     for (let m = 1; m <= 12; m++) {
         const opt = document.createElement("option");
-        opt.value = m.toString().padStart(2, '0');
+        opt.value = m < 10 ? `0${m}` : `${m}`;
         opt.innerText = `شهر ${m}`;
-        if (!curMVal && m === (new Date().getMonth() + 1)) opt.selected = true;
-        if (curMVal && opt.value === curMVal) opt.selected = true;
-        mSelect.appendChild(opt);
+        mSel.appendChild(opt);
     }
+    const currentM = new Date().getMonth() + 1;
+    mSel.value = currentM < 10 ? `0${currentM}` : `${currentM}`;
 
-    const curY = new Date().getFullYear();
-    for (let y = curY - 2; y <= curY + 2; y++) {
+    const currentY = new Date().getFullYear();
+    for (let y = currentY - 2; y <= currentY + 2; y++) {
         const opt = document.createElement("option");
-        opt.value = y.toString();
-        opt.innerText = y.toString();
-        if (!curYVal && y === curY) opt.selected = true;
-        if (curYVal && opt.value === curYVal) opt.selected = true;
-        ySelect.appendChild(opt);
+        opt.value = y;
+        opt.innerText = y;
+        ySel.appendChild(opt);
     }
+    ySel.value = currentY;
 }
 
 function loadAdminMonthlyReport() {
-    const m = document.getElementById("rep-month-select").value;
-    const y = document.getElementById("rep-year-select").value;
-    const cust = document.getElementById("rep-cust-select").value;
+    const month = document.getElementById("rep-month-select").value;
+    const year = document.getElementById("rep-year-select").value;
+    const custFilter = document.getElementById("rep-cust-select").value;
 
-    const prefix = `${y}-${m}`;
-    let filteredInvs = dbInvoices.filter(i => (i.invoice_date || '').startsWith(prefix));
-    let filteredPays = dbPayments.filter(p => (p.payment_date || '').startsWith(prefix));
+    const filtered = dbInvoices.filter(i => {
+        const d = i.invoice_date || "";
+        const matchMY = d.startsWith(`${year}-${month}`);
+        const matchCust = custFilter ? i.customer_name === custFilter : true;
+        return matchMY && matchCust;
+    });
 
-    if (cust) {
-        filteredInvs = filteredInvs.filter(i => i.customer_name === cust);
-        filteredPays = filteredPays.filter(p => p.customer_name === cust);
-    }
+    const count = filtered.length;
+    const sales = filtered.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+    const discount = filtered.reduce((s, i) => s + parseFloat(i.discount || 0), 0);
+    const paid = filtered.reduce((s, i) => s + parseFloat(i.paid_amount || 0), 0);
 
-    const count = filteredInvs.length;
-    const sales = filteredInvs.reduce((s, i) => s + parseFloat(i.total || 0), 0);
-    const paid = filteredPays.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-    const discount = filteredInvs.reduce((s, i) => s + parseFloat(i.discount || 0), 0);
-
-    let debts = 0;
-    if (cust) {
-        const c = dbCustomers.find(x => x.name === cust);
-        if (c) {
-            const allInvs = dbInvoices.filter(i => i.customer_name === c.name);
-            const allPays = dbPayments.filter(p => p.customer_name === c.name);
-            debts = parseFloat(c.opening_balance || 0) + allInvs.reduce((s, i) => s + parseFloat(i.total || 0), 0) - allPays.reduce((s, p) => s + parseFloat(p.amount || 0) + parseFloat(p.discount || 0), 0);
-        }
-    } else {
-        dbCustomers.forEach(c => {
-            const allInvs = dbInvoices.filter(i => i.customer_name === c.name);
-            const allPays = dbPayments.filter(p => p.customer_name === c.name);
-            const bal = parseFloat(c.opening_balance || 0) + allInvs.reduce((s, i) => s + parseFloat(i.total || 0), 0) - allPays.reduce((s, p) => s + parseFloat(p.amount || 0) + parseFloat(p.discount || 0), 0);
-            if (bal > 0) debts += bal;
-        });
-    }
+    let totalLiveDebts = 0;
+    const customersToCalc = custFilter ? dbCustomers.filter(c => c.name === custFilter) : dbCustomers;
+    customersToCalc.forEach(c => {
+        const cInvs = dbInvoices.filter(i => i.customer_name === c.name);
+        const cPays = dbPayments.filter(p => p.customer_name === c.name);
+        const cTotInv = cInvs.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+        const cTotPay = cPays.reduce((s, p) => s + parseFloat(p.amount || 0) + parseFloat(p.discount || 0), 0);
+        const bal = parseFloat(c.opening_balance || 0) + cTotInv - cTotPay;
+        if (bal > 0) totalLiveDebts += bal;
+    });
 
     document.getElementById("rep-card-count").innerText = count;
     document.getElementById("rep-card-sales").innerText = sales.toFixed(2) + " ج";
     document.getElementById("rep-card-paid").innerText = paid.toFixed(2) + " ج";
     document.getElementById("rep-card-discount").innerText = discount.toFixed(2) + " ج";
-    document.getElementById("rep-card-debt").innerText = debts.toFixed(2) + " ج";
+    document.getElementById("rep-card-debt").innerText = totalLiveDebts.toFixed(2) + " ج";
 
     const tbody = document.getElementById("rep-tbody");
     tbody.innerHTML = "";
-    filteredInvs.forEach(inv => {
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 font-semibold">لا توجد فواتير مسجلة في هذا الشهر</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(inv => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td class="p-2.5 text-slate-500">${inv.invoice_date}</td>
-            <td class="p-2.5 font-bold text-slate-800">${inv.customer_name || '-'}</td>
-            <td class="p-2.5 font-bold">${parseFloat(inv.subtotal || inv.total).toFixed(2)} ج</td>
-            <td class="p-2.5 text-red-600 font-bold">${parseFloat(inv.discount || 0).toFixed(2)} ج</td>
+            <td class="p-2.5 text-slate-600">${inv.invoice_date}</td>
+            <td class="p-2.5 font-bold text-slate-800">${inv.customer_name}</td>
+            <td class="p-2.5 font-bold text-slate-700">${parseFloat(inv.subtotal || inv.total).toFixed(2)} ج</td>
+            <td class="p-2.5 font-bold text-red-600">${parseFloat(inv.discount || 0).toFixed(2)} ج</td>
             <td class="p-2.5 font-black text-[#0F6B7A]">${parseFloat(inv.total || 0).toFixed(2)} ج</td>
-            <td class="p-2.5 font-bold text-emerald-600">${parseFloat(inv.paid_amount || 0).toFixed(2)} ج</td><td class="p-2.5 text-center"><button onclick="deleteInvoiceOnline(${inv.id})" class="text-red-600 font-bold hover:underline">حذف</button></td>
+            <td class="p-2.5 font-bold text-emerald-700">${parseFloat(inv.paid_amount || 0).toFixed(2)} ج</td>
+            <td class="p-2.5 text-center flex items-center justify-center gap-2">
+                <button onclick="printInvoiceOnline(${inv.id})" class="text-[#0F6B7A] font-bold hover:underline">🖨️ طباعة</button>
+                <button onclick="deleteInvoiceOnline(${inv.id}, '${inv.customer_name}', '${inv.invoice_date}', ${inv.total})" class="text-red-600 font-bold hover:underline">🗑️ حذف</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
 // -----------------------------------------------------------------------------
-// STATEMENT OF ACCOUNT
+// STATEMENT OF ACCOUNT & PRINTING
 // -----------------------------------------------------------------------------
 function loadAdminCustomerStatement() {
     const custName = document.getElementById("stmt-cust-select").value;
     const c = dbCustomers.find(x => x.name === custName);
+    const tbody = document.getElementById("stmt-tbody");
+    tbody.innerHTML = "";
+
     if (!c) return;
 
-    const invoices = dbInvoices.filter(i => i.customer_name === c.name).sort((a, b) => a.invoice_date.localeCompare(b.invoice_date));
-    const payments = dbPayments.filter(p => p.customer_name === c.name).sort((a, b) => a.payment_date.localeCompare(b.payment_date));
     const openingBal = parseFloat(c.opening_balance || 0);
+    const invoices = dbInvoices.filter(i => i.customer_name === c.name);
+    const payments = dbPayments.filter(p => p.customer_name === c.name);
 
     const operations = [];
     if (openingBal !== 0) {
@@ -871,7 +1111,8 @@ function loadAdminCustomerStatement() {
             date: "رصيد سابق",
             type: "رصيد افتتاحي سابق مسجل للعميل",
             required: openingBal > 0 ? openingBal : 0,
-            paid: openingBal < 0 ? Math.abs(openingBal) : 0
+            paid: openingBal < 0 ? Math.abs(openingBal) : 0,
+            paymentMethod: "-"
         });
     }
 
@@ -882,69 +1123,165 @@ function loadAdminCustomerStatement() {
             date: inv.invoice_date,
             type: desc,
             required: parseFloat(inv.total || 0),
-            paid: 0
+            paid: 0,
+            paymentMethod: "-"
         });
     });
 
     payments.forEach(pay => {
-        let desc = `سداد وتحصيل (${pay.payment_method || 'نقدي'})`;
+        let desc = `سداد وتحصيل`;
         if (pay.discount > 0) desc += ` + خصم تسوية ${parseFloat(pay.discount).toFixed(2)}ج`;
-        if (pay.notes) desc += ` - ${pay.notes}`;
+        if (pay.notes) desc += ` (${pay.notes})`;
+        const payMethodStr = `${parseFloat(pay.amount || 0).toFixed(2)} ج (${pay.payment_method || 'نقدي'})`;
+
         operations.push({
             date: pay.payment_date,
             type: desc,
             required: 0,
-            paid: parseFloat(pay.amount || 0) + parseFloat(pay.discount || 0)
+            paid: parseFloat(pay.amount || 0) + parseFloat(pay.discount || 0),
+            paymentMethod: payMethodStr
+        });
+    });
+
+    let balance = 0;
+    let totalRequired = 0;
+    let totalPaid = 0;
+
+    operations.forEach(op => {
+        balance += op.required - op.paid;
+        totalRequired += op.required;
+        totalPaid += op.paid;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td class="p-2.5 font-semibold text-slate-600">${op.date}</td>
+            <td class="p-2.5 font-bold text-slate-700">${op.type}</td>
+            <td class="p-2.5 font-bold text-red-600">${op.required > 0 ? op.required.toFixed(2) + ' ج' : '-'}</td>
+            <td class="p-2.5 font-bold text-emerald-600">${op.paid > 0 ? op.paymentMethod : '-'}</td>
+            <td class="p-2.5 font-extrabold text-[#0F6B7A]">${balance.toFixed(2)} ج</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById("stmt-card-req").innerText = totalRequired.toFixed(2) + " ج";
+    document.getElementById("stmt-card-paid").innerText = totalPaid.toFixed(2) + " ج";
+    document.getElementById("stmt-card-bal").innerText = balance.toFixed(2) + " ج";
+}
+
+function printCustomerStatement() {
+    const custName = document.getElementById("stmt-cust-select").value;
+    const c = dbCustomers.find(x => x.name === custName);
+    if (!c) return;
+
+    const openingBal = parseFloat(c.opening_balance || 0);
+    const invoices = dbInvoices.filter(i => i.customer_name === c.name);
+    const payments = dbPayments.filter(p => p.customer_name === c.name);
+
+    const operations = [];
+    if (openingBal !== 0) {
+        operations.push({
+            date: "رصيد سابق",
+            type: "رصيد افتتاحي سابق مسجل للعميل",
+            required: openingBal > 0 ? openingBal : 0,
+            paid: openingBal < 0 ? Math.abs(openingBal) : 0,
+            paymentMethod: "-"
+        });
+    }
+
+    invoices.forEach(inv => {
+        operations.push({
+            date: inv.invoice_date,
+            type: "فاتورة مبيعات",
+            required: parseFloat(inv.total || 0),
+            paid: 0,
+            paymentMethod: "-"
+        });
+    });
+
+    payments.forEach(pay => {
+        operations.push({
+            date: pay.payment_date,
+            type: `سداد وتحصيل ${pay.notes ? '(' + pay.notes + ')' : ''}`,
+            required: 0,
+            paid: parseFloat(pay.amount || 0) + parseFloat(pay.discount || 0),
+            paymentMethod: pay.payment_method || 'نقدي'
         });
     });
 
     let balance = 0;
     let totalReq = 0;
     let totalPaid = 0;
-    const tbody = document.getElementById("stmt-tbody");
-    tbody.innerHTML = "";
 
-    operations.forEach(op => {
+    let rowsHtml = operations.map((op, idx) => {
         balance += op.required - op.paid;
         totalReq += op.required;
         totalPaid += op.paid;
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td class="p-2.5 text-slate-500 font-semibold">${op.date}</td>
-            <td class="p-2.5 font-bold text-slate-700">${op.type}</td>
-            <td class="p-2.5 font-bold text-red-600">${op.required > 0 ? op.required.toFixed(2) + ' ج' : '-'}</td>
-            <td class="p-2.5 font-bold text-emerald-600">${op.paid > 0 ? op.paid.toFixed(2) + ' ج' : '-'}</td>
-            <td class="p-2.5 font-black text-[#0F6B7A]">${balance.toFixed(2)} ج</td>
+        return `
+            <tr style="border-bottom: 1px solid #ddd; text-align: center;">
+                <td style="padding: 8px;">${idx + 1}</td>
+                <td style="padding: 8px;">${op.date}</td>
+                <td style="padding: 8px; text-align: right;">${op.type}</td>
+                <td style="padding: 8px; color: #b4232a; font-weight: bold;">${op.required > 0 ? op.required.toFixed(2) : '-'}</td>
+                <td style="padding: 8px; color: #008800; font-weight: bold;">${op.paid > 0 ? op.paid.toFixed(2) : '-'}</td>
+                <td style="padding: 8px; font-weight: bold; color: #0F6B7A;">${balance.toFixed(2)}</td>
+            </tr>
         `;
-        tbody.appendChild(tr);
-    });
+    }).join("");
 
-    document.getElementById("stmt-req-val").innerText = totalReq.toFixed(2) + " ج";
-    document.getElementById("stmt-paid-val").innerText = totalPaid.toFixed(2) + " ج";
-    document.getElementById("stmt-bal-val").innerText = balance.toFixed(2) + " ج";
-}
-
-
-async function deletePaymentOnline(id) {
-    if (!confirm("هل أنت متأكد من رغبتك في حذف هذا السند؟")) return;
-    try {
-        await supabaseClient.from("payments").delete().eq("id", id);
-        await loadAllAdminData();
-        alert("تم حذف السند بنجاح!");
-    } catch (e) {
-        alert("خطأ في الحذف: " + e.message);
-    }
-}
-
-async function deleteInvoiceOnline(id) {
-    if (!confirm(`هل أنت متأكد من حذف الفاتورة رقم #${id} وجميع بنودها؟`)) return;
-    try {
-        await supabaseClient.from("invoice_items").delete().eq("invoice_id", id);
-        await supabaseClient.from("invoices").delete().eq("id", id);
-        await loadAllAdminData();
-        alert("تم حذف الفاتورة بنجاح!");
-    } catch (e) {
-        alert("خطأ في الحذف: " + e.message);
-    }
+    const printWin = window.open("", "_blank");
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <title>كشف حساب العميل - ${c.name}</title>
+            <style>
+                body { font-family: 'Cairo', Tahoma, sans-serif; padding: 20px; direction: rtl; color: #17212B; }
+                .header { text-align: center; border-bottom: 2px solid #0F6B7A; padding-bottom: 10px; margin-bottom: 20px; }
+                .title { font-size: 22px; font-weight: bold; color: #0F6B7A; }
+                .meta { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th { background-color: #E8EEF2; color: #17212B; padding: 8px; border: 1px solid #C8D3DC; }
+                td { border: 1px solid #C8D3DC; }
+                .summary { margin-top: 20px; display: flex; justify-content: space-around; background: #F7FAFC; padding: 12px; border: 1px solid #C8D3DC; border-radius: 6px; font-weight: bold; }
+                @media print { button { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">ستوديو الصباح للتصوير والطباعة</div>
+                <div>كشف حساب عميل تفصيلي</div>
+            </div>
+            <div class="meta">
+                <div>اسم العميل: ${c.name} ${c.phone ? `(${c.phone})` : ''}</div>
+                <div>نوع العميل: ${c.customer_type || '-'}</div>
+                <div>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>م</th>
+                        <th>التاريخ</th>
+                        <th>نوع الحركة والبيان</th>
+                        <th>المطلوب (+)</th>
+                        <th>المدفوع (-)</th>
+                        <th>الرصيد المتبقي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            <div class="summary">
+                <div>إجمالي المطلوب: <span style="color: #b4232a;">${totalReq.toFixed(2)} ج</span></div>
+                <div>إجمالي المسدد: <span style="color: #008800;">${totalPaid.toFixed(2)} ج</span></div>
+                <div>الرصيد المتبقي: <span style="color: #0F6B7A; font-size: 16px;">${balance.toFixed(2)} ج</span></div>
+            </div>
+            <script>
+                window.onload = function() { window.print(); }
+            </script>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
 }
