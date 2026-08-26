@@ -2518,79 +2518,178 @@
 
             let operations = [];
 
-            if (custInfo.openingBalance && custInfo.openingBalance !== 0) {
+            if (custInfo.openingBalance && Number(custInfo.openingBalance) !== 0) {
+                const ob = Number(custInfo.openingBalance);
                 operations.push({
                     date: "2026-08-01", time: "00:00:00", fullDt: "2026-08-01 00:00:00",
                     type: "رصيد سابق", desc: "رصيد افتتاحي سابق مسجل للعميل",
-                    required: custInfo.openingBalance > 0 ? custInfo.openingBalance : 0.0,
-                    paid: custInfo.openingBalance < 0 ? Math.abs(custInfo.openingBalance) : 0.0
+                    required: ob > 0 ? ob : 0.0,
+                    paid: ob < 0 ? Math.abs(ob) : 0.0
                 });
             }
 
-            const custInvs = allInvoices.filter(i => i.customer === selCust);
+            const custInvs = (allInvoices || []).filter(i => i.customer === selCust);
             custInvs.forEach(inv => {
-                const subtotal = inv.items.reduce((s, it) => s + it.total, 0);
-                const discount = inv.discount || 0;
+                const items = Array.isArray(inv.items) ? inv.items : [];
+                const subtotal = items.reduce((s, it) => s + (Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0))), 0);
+                const discount = Number(inv.discount) || 0;
                 const net = Math.max(0, subtotal - discount);
-                const itemsTxt = inv.items.map(it => `${it.name} (${it.size || '-'}) × ${it.qty}`).join(" / ");
-                const desc = `فاتورة #${inv.id}: ${itemsTxt}${discount > 0 ? ` (خصم ${discount.toFixed(2)}ج)` : ''}`;
+                const itemsTxt = items.length > 0 ? items.map(it => `${it.name || 'بند'} (${it.size || '-'}) × ${it.qty || 1}`).join(" / ") : "فاتورة بدون بنود تفصيلية";
+                const desc = `فاتورة #${inv.id || '-'}: ${itemsTxt}${discount > 0 ? ` (خصم ${discount.toFixed(2)}ج)` : ''}`;
 
                 operations.push({
-                    date: inv.date, time: inv.time || "14:00:00", fullDt: `${inv.date} ${inv.time || '14:00:00'}`,
+                    date: inv.date || "2026-08-25", time: inv.time || "14:00:00", fullDt: `${inv.date || '2026-08-25'} ${inv.time || '14:00:00'}`,
                     type: "فاتورة مبيعات", desc: desc, required: net, paid: 0.0
                 });
             });
 
-            const custPays = allPayments.filter(p => p.customer === selCust);
+            const custPays = (allPayments || []).filter(p => p.customer === selCust);
             custPays.forEach(pay => {
-                const totalPaidEntry = pay.amount + (pay.discount || 0);
+                const amt = Number(pay.amount) || 0;
+                const disc = Number(pay.discount) || 0;
+                const totalPaidEntry = amt + disc;
                 let desc = `سند قبض (${pay.method || 'نقدي'})`;
-                if (pay.discount > 0) desc += ` + خصم تسوية ${pay.discount.toFixed(2)}ج`;
+                if (disc > 0) desc += ` + خصم تسوية ${disc.toFixed(2)}ج`;
                 if (pay.notes) desc += ` - ${pay.notes}`;
 
                 operations.push({
-                    date: pay.date, time: "12:00:00", fullDt: `${pay.date} 12:00:00`,
+                    date: pay.date || "2026-08-25", time: "12:00:00", fullDt: `${pay.date || '2026-08-25'} 12:00:00`,
                     type: "سداد دفعة / تحصيل", desc: desc, required: 0.0, paid: totalPaidEntry
                 });
             });
 
-            operations.sort((a, b) => a.fullDt.localeCompare(b.fullDt));
-
-            // Build CSV with UTF-8 BOM for Microsoft Excel compatibility
-            let csvRows = [];
-            csvRows.push(`"تقرير كشف حساب عميل - استوديو الصباح"`);
-            csvRows.push(`"اسم العميل:","${custInfo.name}","رقم الهاتف:","${custInfo.phone || '-'}","نوع العميل:","${custInfo.type || '-'}"`);
-            csvRows.push(`"تاريخ استخراج التقرير:","${new Date().toLocaleDateString('ar-EG')} - ${new Date().toLocaleTimeString('ar-EG')}"`);
-            csvRows.push(``);
-            csvRows.push(`"التاريخ","الوقت","نوع الحركة","البيان والتفصيل","المطلوب منه (+)","المدفوع منه (-)","الرصيد المتبقي"`);
+            operations.sort((a, b) => (a.fullDt || "").localeCompare(b.fullDt || ""));
 
             let runningBal = 0.0;
             let totalRequired = 0.0;
             let totalPaid = 0.0;
+            let rowsHtml = "";
 
-            operations.forEach(op => {
+            operations.forEach((op, index) => {
                 runningBal += (op.required - op.paid);
                 totalRequired += op.required;
                 totalPaid += op.paid;
 
-                const cleanDesc = op.desc.replace(/"/g, '""');
-                csvRows.push(`"${op.date}","${op.time}","${op.type}","${cleanDesc}","${op.required.toFixed(2)}","${op.paid.toFixed(2)}","${runningBal.toFixed(2)}"`);
+                const rowBg = (index % 2 === 0) ? '#FFFFFF' : '#F8FAFC';
+                const balClass = runningBal > 0 ? 'background-color: #FEF2F2; color: #DC2626; font-weight: bold;' : (runningBal < 0 ? 'background-color: #F0FDF4; color: #16A34A; font-weight: bold;' : 'color: #64748B;');
+                const typeBg = op.type.includes('فاتورة') ? 'background-color: #E0F2FE; color: #0369A1;' : (op.type.includes('سداد') ? 'background-color: #DCFCE7; color: #15803D;' : 'background-color: #FEF3C7; color: #B45309;');
+
+                rowsHtml += `
+                  <tr style="background-color: ${rowBg};">
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; font-weight: bold;">${index + 1}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px;">${op.date}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; color: #64748B; font-size: 10pt;">${op.time}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; ${typeBg} font-weight: 600;">${op.type}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: right; padding: 8px 12px; font-size: 10.5pt; color: #1E293B;">${op.desc}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; font-weight: bold; color: #DC2626;">${op.required > 0 ? `${op.required.toFixed(2)} ج` : '-'}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; font-weight: bold; color: #16A34A;">${op.paid > 0 ? `${op.paid.toFixed(2)} ج` : '-'}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; ${balClass}">${runningBal > 0 ? `+${runningBal.toFixed(2)} ج (عليه)` : (runningBal < 0 ? `${runningBal.toFixed(2)} ج (له)` : '0.00 ج')}</td>
+                  </tr>
+                `;
             });
 
-            csvRows.push(``);
-            csvRows.push(`"الملخص المالي العام"`);
-            csvRows.push(`"إجمالي مبلغ الفواتير:","${totalRequired.toFixed(2)} ج"`);
-            csvRows.push(`"إجمالي المسدد منه:","${totalPaid.toFixed(2)} ج"`);
-            csvRows.push(`"صافي الحساب المتبقي الآن:","${runningBal > 0 ? `عليه: +${runningBal.toFixed(2)} ج` : (runningBal < 0 ? `له: ${runningBal.toFixed(2)} ج` : '0.00 ج (خالص)')}"`);
+            const exportDt = new Date().toLocaleDateString('ar-EG') + ' - ' + new Date().toLocaleTimeString('ar-EG');
+            const netStatus = runningBal > 0 ? `متبقي عليه: +${runningBal.toFixed(2)} ج` : (runningBal < 0 ? `له في الحساب: ${Math.abs(runningBal).toFixed(2)} ج` : 'الحساب خالص بالكامل (0.00 ج)');
+            const netBg = runningBal > 0 ? '#FEF2F2' : (runningBal < 0 ? '#F0FDF4' : '#F1F5F9');
+            const netColor = runningBal > 0 ? '#B91C1C' : (runningBal < 0 ? '#15803D' : '#1E293B');
 
-            const csvString = "\uFEFF" + csvRows.join("\r\n");
+            const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<!--[if gte mso 9]>
+<xml>
+ <x:ExcelWorkbook>
+  <x:ExcelWorksheets>
+   <x:ExcelWorksheet>
+    <x:Name>كشف حساب ${custInfo.name}</x:Name>
+    <x:WorksheetOptions>
+     <x:DisplayRightToLeft/>
+     <x:Selected/>
+    </x:WorksheetOptions>
+   </x:ExcelWorksheet>
+  </x:ExcelWorksheets>
+ </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; text-align: right; background-color: #FFFFFF; }
+</style>
+</head>
+<body dir="rtl">
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+    <tr>
+      <td colspan="8" style="font-size: 18pt; font-weight: bold; color: #1E3A8A; text-align: center; padding: 12px 0 4px 0;">برنامج حسابات ستوديو الصباح - كشف حساب تفصيلي</td>
+    </tr>
+    <tr>
+      <td colspan="8" style="font-size: 11pt; color: #475569; text-align: center; padding-bottom: 12px;">تقرير شامل لجميع الحركات المالية والفواتير وسندات السداد</td>
+    </tr>
+  </table>
+
+  <!-- Customer Metadata Card -->
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 2px solid #1E3A8A;">
+    <tr style="background-color: #F8FAFC;">
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0; width: 14%;">اسم العميل:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; color: #1E3A8A; font-size: 12pt; width: 36%;">${custInfo.name}</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0; width: 14%;">رقم الهاتف:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; width: 36%;">${custInfo.phone || '-'}</td>
+    </tr>
+    <tr style="background-color: #FFFFFF;">
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0;">نوع العميل:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; color: #0369A1;">${custInfo.type || '-'}</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0;">تاريخ الاستخراج:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; color: #475569;">${exportDt}</td>
+    </tr>
+  </table>
+
+  <!-- Ledger Data Table -->
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+    <thead>
+      <tr style="background-color: #1E3A8A; color: #FFFFFF;">
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 5%;">م</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 10%;">التاريخ</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 9%;">الوقت</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 13%;">نوع الحركة</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 33%;">البيان والتفصيل</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 10%;">المطلوب (+)</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 10%;">المدفوع (-)</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 10%;">الرصيد المتبقي</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml || `<tr><td colspan="8" style="text-align: center; padding: 20px; border: 1px solid #CBD5E1; color: #64748B;">لا توجد حركات مسجلة لهذا العميل</td></tr>`}
+    </tbody>
+  </table>
+
+  <!-- Financial Summary Card Table -->
+  <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #CBD5E1;">
+    <tr style="background-color: #F8FAFC;">
+      <td colspan="8" style="padding: 8px 12px; font-weight: bold; font-size: 12pt; color: #1E3A8A; border: 1px solid #CBD5E1; text-align: center;">📊 الملخص المالي الإجمالي للحساب</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="padding: 10px; border: 1px solid #CBD5E1; text-align: center; background-color: #FEF2F2;">
+        <div style="font-size: 10.5pt; color: #991B1B; font-weight: bold;">🔴 إجمالي مبلغ الفواتير</div>
+        <div style="font-size: 14pt; color: #B91C1C; font-weight: bold; margin-top: 4px;">${totalRequired.toFixed(2)} ج</div>
+      </td>
+      <td colspan="3" style="padding: 10px; border: 1px solid #CBD5E1; text-align: center; background-color: #F0FDF4;">
+        <div style="font-size: 10.5pt; color: #166534; font-weight: bold;">🟢 إجمالي المسدد والتحصيلات</div>
+        <div style="font-size: 14pt; color: #15803D; font-weight: bold; margin-top: 4px;">${totalPaid.toFixed(2)} ج</div>
+      </td>
+      <td colspan="3" style="padding: 10px; border: 1px solid #CBD5E1; text-align: center; background-color: ${netBg};">
+        <div style="font-size: 10.5pt; color: ${netColor}; font-weight: bold;">🔵 صافي الحساب النهائي</div>
+        <div style="font-size: 14pt; color: ${netColor}; font-weight: bold; margin-top: 4px;">${netStatus}</div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
             const safeCustName = custInfo.name.replace(/[\s\(\)\/]+/g, '_');
-            const fileName = `كشف_حساب_${safeCustName}_${new Date().toISOString().slice(0,10)}.csv`;
+            const fileName = `كشف_حساب_${safeCustName}_${new Date().toISOString().slice(0,10)}.xls`;
 
             if (window.pywebview && window.pywebview.api && window.pywebview.api.save_excel_file) {
-                window.pywebview.api.save_excel_file(fileName, csvString).then(res => {
+                window.pywebview.api.save_excel_file(fileName, excelHtml).then(res => {
                     if (res && res.success) {
-                        showToast(`📊 تم حفظ كشف الحساب Excel في مجلد (تقارير وكشوفات Excel) بنجاح!`);
+                        showToast(`📊 تم حفظ كشف الحساب Excel المنسق للعميل (${custInfo.name}) بنجاح!`);
                     } else {
                         showToast("⚠️ تعذر حفظ الملف: " + (res ? res.error : ''));
                     }
@@ -2598,7 +2697,7 @@
                     console.error("Desktop export error:", err);
                 });
             } else {
-                const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+                const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -2607,7 +2706,7 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast(`📊 تم تنزيل ملف كشف حساب Excel للعميل (${custInfo.name}) بنجاح!`);
+                showToast(`📊 تم تنزيل ملف كشف حساب Excel المنسق للعميل (${custInfo.name}) بنجاح!`);
             }
         }
 
@@ -2617,34 +2716,141 @@
             const targetMonth = `${y}-${m}`;
             const selCust = document.getElementById("reportCustomerSelect").value;
 
-            let filteredInvs = allInvoices.filter(inv => inv.date.startsWith(targetMonth));
+            let filteredInvs = (allInvoices || []).filter(inv => inv.date && inv.date.startsWith(targetMonth));
             if (selCust && selCust !== "كل العملاء") {
                 filteredInvs = filteredInvs.filter(inv => inv.customer === selCust);
             }
 
-            let csvRows = [];
-            csvRows.push(`"تقرير الفواتير والمبيعات لشهر (${targetMonth}) - استوديو الصباح"`);
-            csvRows.push(`"العميل المحدد:","${selCust}"`);
-            csvRows.push(`"تاريخ التصدير:","${new Date().toLocaleDateString('ar-EG')}"`);
-            csvRows.push(``);
-            csvRows.push(`"رقم الفاتورة","التاريخ","الوقت","اسم العميل","المجموع قبل الخصم","الخصم","صافي الفاتورة","المنتجات والبنود"`);
+            let totalGross = 0;
+            let totalDisc = 0;
+            let totalNet = 0;
+            let rowsHtml = "";
 
-            filteredInvs.forEach(inv => {
-                const subtotal = inv.items.reduce((s, it) => s + it.total, 0);
-                const discount = inv.discount || 0;
+            filteredInvs.forEach((inv, index) => {
+                const items = Array.isArray(inv.items) ? inv.items : [];
+                const subtotal = items.reduce((s, it) => s + (Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0))), 0);
+                const discount = Number(inv.discount) || 0;
                 const net = Math.max(0, subtotal - discount);
-                const itemsTxt = inv.items.map(it => `${it.name} (${it.size || '-'}) × ${it.qty}`).join(" / ").replace(/"/g, '""');
+                const itemsTxt = items.length > 0 ? items.map(it => `${it.name} (${it.size || '-'}) × ${it.qty || 1}`).join(" / ") : "فاتورة بدون بنود";
 
-                csvRows.push(`"#${inv.id}","${inv.date}","${inv.time || '-'}","${inv.customer}","${subtotal.toFixed(2)}","${discount.toFixed(2)}","${net.toFixed(2)}","${itemsTxt}"`);
+                totalGross += subtotal;
+                totalDisc += discount;
+                totalNet += net;
+
+                const rowBg = (index % 2 === 0) ? '#FFFFFF' : '#F8FAFC';
+
+                rowsHtml += `
+                  <tr style="background-color: ${rowBg};">
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; font-weight: bold; color: #1E3A8A;">#${inv.id}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px;">${inv.date}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; color: #64748B;">${inv.time || '-'}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: right; padding: 8px 12px; font-weight: bold; color: #1E293B;">${inv.customer}</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px;">${subtotal.toFixed(2)} ج</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; color: #DC2626;">${discount.toFixed(2)} ج</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: center; padding: 8px; font-weight: bold; color: #1E3A8A; background-color: #EFF6FF;">${net.toFixed(2)} ج</td>
+                    <td style="border: 1px solid #CBD5E1; text-align: right; padding: 8px 12px; font-size: 10pt; color: #475569;">${itemsTxt}</td>
+                  </tr>
+                `;
             });
 
-            const csvString = "\uFEFF" + csvRows.join("\r\n");
-            const fileName = `تقرير_فواتير_شهر_${targetMonth}.csv`;
+            const exportDt = new Date().toLocaleDateString('ar-EG') + ' - ' + new Date().toLocaleTimeString('ar-EG');
+
+            const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<!--[if gte mso 9]>
+<xml>
+ <x:ExcelWorkbook>
+  <x:ExcelWorksheets>
+   <x:ExcelWorksheet>
+    <x:Name>تقرير شهر ${targetMonth}</x:Name>
+    <x:WorksheetOptions>
+     <x:DisplayRightToLeft/>
+     <x:Selected/>
+    </x:WorksheetOptions>
+   </x:ExcelWorksheet>
+  </x:ExcelWorksheets>
+ </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; text-align: right; background-color: #FFFFFF; }
+</style>
+</head>
+<body dir="rtl">
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+    <tr>
+      <td colspan="8" style="font-size: 18pt; font-weight: bold; color: #1E3A8A; text-align: center; padding: 12px 0 4px 0;">برنامج حسابات ستوديو الصباح - تقرير الفواتير والمبيعات</td>
+    </tr>
+    <tr>
+      <td colspan="8" style="font-size: 11pt; color: #475569; text-align: center; padding-bottom: 12px;">كشف شامل لمبيعات وفواتير شهر (${targetMonth})</td>
+    </tr>
+  </table>
+
+  <!-- Filter Card -->
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 2px solid #1E3A8A;">
+    <tr style="background-color: #F8FAFC;">
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0; width: 14%;">الشهر والسنة:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; color: #1E3A8A; font-size: 12pt; width: 36%;">${targetMonth}</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0; width: 14%;">العميل المحدد:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; width: 36%;">${selCust}</td>
+    </tr>
+    <tr style="background-color: #FFFFFF;">
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0;">عدد الفواتير:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; color: #0369A1;">${filteredInvs.length} فاتورة</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; font-weight: bold; background-color: #E2E8F0;">تاريخ التصدير:</td>
+      <td style="border: 1px solid #CBD5E1; padding: 8px 12px; color: #475569;">${exportDt}</td>
+    </tr>
+  </table>
+
+  <!-- Data Table -->
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+    <thead>
+      <tr style="background-color: #1E3A8A; color: #FFFFFF;">
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 8%;">رقم الفاتورة</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 10%;">التاريخ</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 8%;">الوقت</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 18%;">اسم العميل</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 11%;">المجموع قبل الخصم</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 9%;">الخصم</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 12%;">صافي الفاتورة</th>
+        <th style="border: 1px solid #1E3A8A; padding: 10px; font-size: 11pt; width: 24%;">المنتجات والبنود</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml || `<tr><td colspan="8" style="text-align: center; padding: 20px; border: 1px solid #CBD5E1; color: #64748B;">لا توجد فواتير مسجلة في هذا الشهر</td></tr>`}
+    </tbody>
+  </table>
+
+  <!-- Summary Table -->
+  <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #CBD5E1;">
+    <tr style="background-color: #F8FAFC;">
+      <td colspan="8" style="padding: 8px 12px; font-weight: bold; font-size: 12pt; color: #1E3A8A; border: 1px solid #CBD5E1; text-align: center;">📊 ملخص مبيعات الشهر الإجمالي</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="padding: 10px; border: 1px solid #CBD5E1; text-align: center; background-color: #F1F5F9;">
+        <div style="font-size: 10.5pt; color: #475569; font-weight: bold;">إجمالي قبل الخصم</div>
+        <div style="font-size: 14pt; color: #1E293B; font-weight: bold; margin-top: 4px;">${totalGross.toFixed(2)} ج</div>
+      </td>
+      <td colspan="3" style="padding: 10px; border: 1px solid #CBD5E1; text-align: center; background-color: #FEF2F2;">
+        <div style="font-size: 10.5pt; color: #991B1B; font-weight: bold;">🔴 إجمالي الخصومات</div>
+        <div style="font-size: 14pt; color: #B91C1C; font-weight: bold; margin-top: 4px;">${totalDisc.toFixed(2)} ج</div>
+      </td>
+      <td colspan="3" style="padding: 10px; border: 1px solid #CBD5E1; text-align: center; background-color: #EFF6FF;">
+        <div style="font-size: 10.5pt; color: #1E40AF; font-weight: bold;">🔵 صافي مبيعات الشهر</div>
+        <div style="font-size: 14pt; color: #1E3A8A; font-weight: bold; margin-top: 4px;">${totalNet.toFixed(2)} ج</div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+            const fileName = `تقرير_فواتير_شهر_${targetMonth}.xls`;
 
             if (window.pywebview && window.pywebview.api && window.pywebview.api.save_excel_file) {
-                window.pywebview.api.save_excel_file(fileName, csvString).then(res => {
+                window.pywebview.api.save_excel_file(fileName, excelHtml).then(res => {
                     if (res && res.success) {
-                        showToast(`📈 تم حفظ تقرير الفواتير Excel في مجلد (تقارير وكشوفات Excel) بنجاح!`);
+                        showToast(`📈 تم حفظ تقرير الفواتير Excel المنسق لشهر (${targetMonth}) بنجاح!`);
                     } else {
                         showToast("⚠️ تعذر حفظ الملف: " + (res ? res.error : ''));
                     }
@@ -2652,7 +2858,7 @@
                     console.error("Desktop export error:", err);
                 });
             } else {
-                const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+                const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -2661,7 +2867,7 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast(`📈 تم تنزيل تقرير الفواتير لشهر (${targetMonth}) بصيغة Excel بنجاح!`);
+                showToast(`📈 تم تنزيل تقرير الفواتير Excel المنسق لشهر (${targetMonth}) بنجاح!`);
             }
         }
 
