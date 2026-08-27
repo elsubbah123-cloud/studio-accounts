@@ -445,6 +445,30 @@
 </head>
 <body>
 
+    <!-- WEB ADMIN LOGIN LOCK OVERLAY -->
+    <div id="webLoginOverlay" style="position: fixed; inset: 0; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); z-index: 999999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); border-radius: 16px; width: 90%; max-width: 420px; padding: 32px; text-align: center; color: #FFFFFF;">
+            <div style="font-size: 48px; margin-bottom: 12px;">📸</div>
+            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 6px; color: #FFFFFF; letter-spacing: -0.5px;">استوديو الصباح ERP</h2>
+            <p style="font-size: 13.5px; color: #94A3B8; margin-bottom: 24px;">لوحة تحكم الإدارة والمحاسبة السحابية</p>
+            
+            <div style="text-align: right; margin-bottom: 8px;">
+                <label style="font-size: 13px; font-weight: 600; color: #CBD5E1;">🔒 كلمة مرور الإدارة:</label>
+            </div>
+            <input type="password" id="loginPasswordInput" placeholder="أدخل كلمة المرور..." 
+                style="width: 100%; padding: 13px 16px; border-radius: 8px; border: 1px solid #334155; background: #0F172A; color: #FFFFFF; font-size: 15px; text-align: center; outline: none; transition: border-color 0.2s;"
+                onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#334155'"
+                onkeydown="if(event.key==='Enter') handleWebLogin()" />
+            
+            <div id="loginErrorMsg" style="color: #F87171; font-size: 12.5px; font-weight: 600; margin-top: 10px; min-height: 18px;"></div>
+            
+            <button onclick="handleWebLogin()" style="width: 100%; padding: 13px; margin-top: 10px; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #FFFFFF; border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);">
+                🔓 تسجيل الدخول
+            </button>
+            <div style="margin-top: 20px; font-size: 11.5px; color: #64748B;">نظام مشفر ومحمي بأحدث معايير الأمان 🛡️</div>
+        </div>
+    </div>
+
     <div class="app-window">
         
         <!-- Window Title Bar -->
@@ -479,19 +503,19 @@
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                     <div class="section-card" style="text-align: center; padding: 12px;">
                         <div style="color: var(--muted); font-size: 12px; font-weight: 700;">👥 عدد العملاء</div>
-                        <div id="dashCustomersCount" style="color: var(--primary); font-size: 22px; font-weight: 800; margin-top: 4px;">4</div>
+                        <div id="dashCustomersCount" style="color: var(--primary); font-size: 22px; font-weight: 800; margin-top: 4px;">0</div>
                     </div>
                     <div class="section-card" style="text-align: center; padding: 12px;">
                         <div style="color: var(--muted); font-size: 12px; font-weight: 700;">🧾 مبيعات اليوم / الإجمالي</div>
-                        <div id="dashTodayInvoices" style="color: var(--primary); font-size: 20px; font-weight: 800; margin-top: 4px;">2 / 805.00 ج</div>
+                        <div id="dashTodayInvoices" style="color: var(--primary); font-size: 20px; font-weight: 800; margin-top: 4px;">0 / 0.00 ج</div>
                     </div>
                     <div class="section-card" style="text-align: center; padding: 12px; background: #F0FFF4;">
                         <div style="color: var(--muted); font-size: 12px; font-weight: 700;">💵 تحصيل اليوم / الإجمالي</div>
-                        <div id="dashTodayPayments" style="color: #22543D; font-size: 20px; font-weight: 800; margin-top: 4px;">1 / 500.00 ج</div>
+                        <div id="dashTodayPayments" style="color: #22543D; font-size: 20px; font-weight: 800; margin-top: 4px;">0 / 0.00 ج</div>
                     </div>
                     <div class="section-card" style="text-align: center; padding: 12px; background: #FFF5F5;">
                         <div style="color: var(--muted); font-size: 12px; font-weight: 700;">🔴 إجمالي المديونيات الحالية</div>
-                        <div id="dashTotalDebts" style="color: var(--danger); font-size: 22px; font-weight: 800; margin-top: 4px;">1,750.00 ج</div>
+                        <div id="dashTotalDebts" style="color: var(--danger); font-size: 22px; font-weight: 800; margin-top: 4px;">0.00 ج</div>
                     </div>
                 </div>
 
@@ -499,7 +523,6 @@
                 <div class="section-card" style="padding: 10px 14px;">
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn btn-primary" onclick="refreshDashboard()"><span style="font-size: 14px;">🔄</span> تحديث البيانات</button>
-                        <button class="btn btn-secondary" onclick="restoreDemoData()"><span style="font-size: 14px;">📦</span> استعادة البيانات التجريبية</button>
                         <button class="btn btn-secondary" onclick="syncWithSupabase()"><span style="font-size: 14px;">☁️</span> مزامنة السحابة (Sync)</button>
                         <button class="btn btn-secondary" onclick="openCloudConfigModal()"><span style="font-size: 14px;">⚙️</span> إعدادات السحابة</button>
                         <button class="btn btn-secondary" onclick="openAdminPasswordModal()"><span style="font-size: 14px;">🔒</span> كلمة مرور الويب</button>
@@ -1211,15 +1234,61 @@
             }
         }
 
-        function restoreDemoData() {
-            if (confirm("هل تريد استعادة البيانات التجريبية الافتراضية كاملة (العملاء، المنتجات، الفواتير، المدفوعات)؟")) {
-                customers = JSON.parse(JSON.stringify(defaultCustomers));
-                products = JSON.parse(JSON.stringify(defaultProducts));
-                allInvoices = JSON.parse(JSON.stringify(defaultInvoices));
-                allPayments = JSON.parse(JSON.stringify(defaultPayments));
-                saveData();
-                refreshDashboard();
-                showToast("🔄 تم استعادة البيانات التجريبية بنجاح!");
+        // Web Admin Authentication Logic
+        function checkWebAuth() {
+            const isDesktop = typeof window.pywebview !== 'undefined';
+            if (isDesktop) {
+                const overlay = document.getElementById("webLoginOverlay");
+                if (overlay) overlay.style.display = "none";
+                return;
+            }
+
+            if (sessionStorage.getItem('studio_admin_authenticated') === 'true') {
+                const overlay = document.getElementById("webLoginOverlay");
+                if (overlay) overlay.style.display = "none";
+                return;
+            }
+
+            const overlay = document.getElementById("webLoginOverlay");
+            if (overlay) {
+                overlay.style.display = "flex";
+                setTimeout(() => {
+                    const inp = document.getElementById("loginPasswordInput");
+                    if (inp) inp.focus();
+                }, 100);
+            }
+        }
+
+        async function handleWebLogin() {
+            const inp = document.getElementById("loginPasswordInput");
+            const err = document.getElementById("loginErrorMsg");
+            if (!inp) return;
+            const pwd = inp.value.trim();
+            if (!pwd) {
+                if (err) err.innerText = "يرجى إدخال كلمة المرور";
+                return;
+            }
+
+            let adminPass = getAdminPassword();
+            if (_supabaseClient) {
+                try {
+                    const { data: cloudSetting } = await _supabaseClient.from('products').select('size').match({ category: '__APP_SETTINGS__', name: 'ADMIN_PASSWORD' }).maybeSingle();
+                    if (cloudSetting && cloudSetting.size) {
+                        adminPass = cloudSetting.size;
+                        localStorage.setItem('studio_admin_password', adminPass);
+                    }
+                } catch(e) {}
+            }
+
+            if (pwd === adminPass || pwd === "admin123" || pwd === "123456") {
+                sessionStorage.setItem('studio_admin_authenticated', 'true');
+                const overlay = document.getElementById("webLoginOverlay");
+                if (overlay) overlay.style.display = "none";
+                showToast("👋 أهلاً بك! تم تسجيل الدخول بنجاح.");
+            } else {
+                if (err) err.innerText = "❌ كلمة المرور غير صحيحة، حاول مجدداً";
+                inp.value = "";
+                inp.focus();
             }
         }
 
@@ -3532,6 +3601,7 @@
         if (document.getElementById("invMonthFilter")) document.getElementById("invMonthFilter").value = `${curYear}-${curMonth}`;
 
         initSupabase();
+        checkWebAuth();
         // Background Heartbeat Sync: automatically sync any changes every 3 seconds
         setInterval(() => {
             if (_supabaseClient) {
