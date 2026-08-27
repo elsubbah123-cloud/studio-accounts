@@ -2161,7 +2161,7 @@
                 btn.onclick = () => selectCategory(cat, btn);
                 catPad.appendChild(btn);
             });
-            if (cats.length > 0) selectCategory(cats[0]);
+            if (cats.length > 0) selectCategory(cats[0], catPad.firstChild);
         }
 
         function selectCategory(cat, btnElem) {
@@ -2173,12 +2173,11 @@
             const subList = products.filter(p => p.category === cat);
             subList.forEach((it, idx) => {
                 const b = document.createElement("button");
-                b.className = `subsize-btn ${idx === 0 ? 'active' : ''}`;
+                b.className = `subsize-btn`;
                 b.innerText = it.size ? `${it.size} - ${it.name}` : it.name;
                 b.onclick = () => selectSubsize(it, b);
                 subPad.appendChild(b);
             });
-            if (subList.length > 0) selectSubsize(subList[0]);
         }
 
         function selectSubsize(item, btnElem) {
@@ -3659,7 +3658,11 @@
             if (!_supabaseClient) return;
             try {
                 if (isDelete) {
-                    await _supabaseClient.from('products').delete().match({ category: prod.category, name: prod.name });
+                    if (prod.id) {
+                        await _supabaseClient.from('products').delete().eq('local_id', prod.id);
+                    } else {
+                        await _supabaseClient.from('products').delete().match({ category: prod.category, name: prod.name, size: prod.size || '' });
+                    }
                 } else {
                     const prodPayload = {
                         local_id: prod.id,
@@ -3669,7 +3672,17 @@
                         default_unit_price: Number(prod.price) || 0,
                         updated_at: new Date().toISOString()
                     };
-                    const { data: existing } = await _supabaseClient.from('products').select('id').match({ category: prod.category, name: prod.name }).maybeSingle();
+                    
+                    let existing = null;
+                    if (prod.id) {
+                        const { data: byLocalId } = await _supabaseClient.from('products').select('id').eq('local_id', prod.id).maybeSingle();
+                        if (byLocalId && byLocalId.id) existing = byLocalId;
+                    }
+                    if (!existing) {
+                        const { data: byTriple } = await _supabaseClient.from('products').select('id').match({ category: prod.category, name: prod.name, size: prod.size || '' }).maybeSingle();
+                        if (byTriple && byTriple.id) existing = byTriple;
+                    }
+
                     if (existing && existing.id) {
                         await _supabaseClient.from('products').update(prodPayload).eq('id', existing.id);
                     } else {
