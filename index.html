@@ -445,27 +445,164 @@
 </head>
 <body>
 
-    <!-- WEB ADMIN LOGIN LOCK OVERLAY -->
-    <div id="webLoginOverlay" style="position: fixed; inset: 0; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); z-index: 999999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-        <div style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); border-radius: 16px; width: 90%; max-width: 420px; padding: 32px; text-align: center; color: #FFFFFF;">
-            <div style="font-size: 48px; margin-bottom: 12px;">📸</div>
-            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 6px; color: #FFFFFF; letter-spacing: -0.5px;">استوديو الصباح ERP</h2>
-            <p style="font-size: 13.5px; color: #94A3B8; margin-bottom: 24px;">لوحة تحكم الإدارة والمحاسبة السحابية</p>
-            
-            <div style="text-align: right; margin-bottom: 8px;">
-                <label style="font-size: 13px; font-weight: 600; color: #CBD5E1;">🔒 كلمة مرور الإدارة:</label>
+    <!-- ================= 0. PORTAL LANDING & LOGIN OVERLAYS ================= -->
+    <div id="portalLandingOverlay" style="position: fixed; inset: 0; background: radial-gradient(circle at center, #1E293B 0%, #0F172A 100%); z-index: 999990; display: none; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+        <div style="width: 100%; max-width: 840px; text-align: center; color: #FFFFFF; animation: fadeIn 0.3s ease;">
+            <div style="font-size: 54px; margin-bottom: 8px;">📸</div>
+            <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 6px; color: #F8FAFC; letter-spacing: -0.5px;">استوديو الصباح - Studio Al-Sabah</h1>
+            <p style="font-size: 15px; color: #94A3B8; margin-bottom: 35px;">المنظومة السحابية المتكاملة لإدارة الحسابات وخدمات العملاء</p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                
+                <!-- CARD 1: ADMIN PORTAL -->
+                <div style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); transition: transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
+                    <div style="font-size: 44px; background: rgba(59, 130, 246, 0.15); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(59, 130, 246, 0.3);">🏢</div>
+                    <h3 style="font-size: 20px; font-weight: 800; color: #F8FAFC; margin-bottom: 8px;">دخول الإدارة</h3>
+                    <p style="font-size: 13.5px; color: #94A3B8; margin-bottom: 24px; line-height: 1.6; flex: 1;">لوحة التحكم الشاملة، إصدار الفواتير، تسجيل المقبوضات، وإدارة الحسابات والتقارير المالية.</p>
+                    <button onclick="showAdminLoginModal()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #FFFFFF; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
+                        🔒 تسجيل دخول الإدارة
+                    </button>
+                </div>
+
+                <!-- CARD 2: CLIENT PORTAL -->
+                <div style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); transition: transform 0.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
+                    <div style="font-size: 44px; background: rgba(16, 185, 129, 0.15); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(16, 185, 129, 0.3);">👤</div>
+                    <h3 style="font-size: 20px; font-weight: 800; color: #F8FAFC; margin-bottom: 8px;">بوابة العملاء (شوف فاتورتك)</h3>
+                    <p style="font-size: 13.5px; color: #94A3B8; margin-bottom: 24px; line-height: 1.6; flex: 1;">متابعة فورية لكشف حسابك، فواتيرك التفصيلية والمسددات الخاصة بك برقم الكود السري.</p>
+                    <button onclick="showClientLoginModal()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFFFFF; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);">
+                        👁️ شوف فاتورتك وكشف حسابك
+                    </button>
+                </div>
+
             </div>
-            <input type="password" id="loginPasswordInput" placeholder="أدخل كلمة المرور..." 
-                style="width: 100%; padding: 13px 16px; border-radius: 8px; border: 1px solid #334155; background: #0F172A; color: #FFFFFF; font-size: 15px; text-align: center; outline: none; transition: border-color 0.2s;"
-                onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#334155'"
-                onkeydown="if(event.key==='Enter') handleWebLogin()" />
+
+            <div style="margin-top: 30px; font-size: 12px; color: #64748B;">نظام مشفر ومحمي بأحدث معايير الأمان السحابية 🛡️</div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN LOGIN -->
+    <div id="adminLoginModalOverlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 999995; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px);">
+        <div style="background: #1E293B; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; width: 100%; max-width: 400px; padding: 28px; color: #FFFFFF; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🏢</div>
+            <h3 style="font-size: 19px; font-weight: 800; margin-bottom: 4px;">تسجيل دخول الإدارة</h3>
+            <p style="font-size: 13px; color: #94A3B8; margin-bottom: 20px;">أدخل كلمة مرور الأدمن للمتابعة</p>
             
-            <div id="loginErrorMsg" style="color: #F87171; font-size: 12.5px; font-weight: 600; margin-top: 10px; min-height: 18px;"></div>
+            <div style="text-align: right; margin-bottom: 6px;">
+                <label style="font-size: 13px; color: #CBD5E1; font-weight: 600;">🔒 كلمة المرور:</label>
+            </div>
+            <input type="password" id="adminLoginPwdInput" placeholder="أدخل كلمة المرور..." 
+                style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #334155; background: #0F172A; color: #FFFFFF; font-size: 15px; text-align: center; outline: none;"
+                onkeydown="if(event.key==='Enter') executeAdminLogin()" />
+            <div id="adminLoginErrMsg" style="color: #F87171; font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 18px;"></div>
             
-            <button onclick="handleWebLogin()" style="width: 100%; padding: 13px; margin-top: 10px; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #FFFFFF; border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);">
-                🔓 تسجيل الدخول
-            </button>
-            <div style="margin-top: 20px; font-size: 11.5px; color: #64748B;">نظام مشفر ومحمي بأحدث معايير الأمان 🛡️</div>
+            <div style="display: flex; gap: 8px; margin-top: 14px;">
+                <button onclick="executeAdminLogin()" style="flex: 1; padding: 12px; background: #2563EB; color: #FFF; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">🔓 دخول</button>
+                <button onclick="closeAdminLoginModal()" style="padding: 12px 16px; background: #334155; color: #FFF; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CLIENT LOGIN -->
+    <div id="clientLoginModalOverlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 999995; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px);">
+        <div style="background: #1E293B; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; width: 100%; max-width: 400px; padding: 28px; color: #FFFFFF; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">👤</div>
+            <h3 style="font-size: 19px; font-weight: 800; margin-bottom: 4px;">بوابة العملاء - شوف فاتورتك</h3>
+            <p style="font-size: 13px; color: #94A3B8; margin-bottom: 20px;">أدخل كود العميل السري (PIN) الخاص بك</p>
+            
+            <div style="text-align: right; margin-bottom: 6px;">
+                <label style="font-size: 13px; color: #CBD5E1; font-weight: 600;">🔢 كود الدخول السري (PIN):</label>
+            </div>
+            <input type="text" id="clientLoginPinInput" placeholder="مثال: 4821" 
+                style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #334155; background: #0F172A; color: #FFFFFF; font-size: 18px; font-family: monospace; letter-spacing: 2px; text-align: center; outline: none;"
+                onkeydown="if(event.key==='Enter') executeClientLogin()" />
+            <div id="clientLoginErrMsg" style="color: #F87171; font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 18px;"></div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 14px;">
+                <button onclick="executeClientLogin()" style="flex: 1; padding: 12px; background: #059669; color: #FFF; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">👁️ فتح حسابي</button>
+                <button onclick="closeClientLoginModal()" style="padding: 12px 16px; background: #334155; color: #FFF; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CLIENT DEDICATED PORTAL VIEW ================= -->
+    <div id="clientPortalContainer" style="position: fixed; inset: 0; background: #0F172A; z-index: 999980; display: none; flex-direction: column; color: #F8FAFC; overflow-y: auto;">
+        <!-- Client Portal Header -->
+        <div style="background: #1E293B; border-bottom: 1px solid #334155; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 32px;">📸</span>
+                <div>
+                    <div style="font-size: 18px; font-weight: 800; color: #FFFFFF;">استوديو الصباح - بوابة العميل</div>
+                    <div style="font-size: 13px; color: #94A3B8;">مرحباً بك: <strong id="portalCustTitleName" style="color: #38BDF8;">-</strong></div>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="portalCustBalanceBadge" style="padding: 6px 14px; border-radius: 8px; font-weight: 800; font-size: 14px;">-</div>
+                <button class="btn btn-secondary" onclick="printClientStatement()">🖨️ طباعة كشف الحساب</button>
+                <button class="btn btn-danger" onclick="logoutClientPortal()">🚪 خروج</button>
+            </div>
+        </div>
+
+        <!-- Client Portal Content -->
+        <div style="max-width: 1100px; width: 100%; margin: 20px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; flex: 1;">
+            
+            <!-- Client Tabs Nav -->
+            <div style="display: flex; gap: 10px; border-bottom: 2px solid #334155; padding-bottom: 8px;">
+                <button id="clientTabBtnInvoices" onclick="switchClientPortalTab('invoices')" style="padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; background: #2563EB; color: #FFF;">
+                    🧾 فواتيري ومبيعاتي (<span id="portalInvsCount">0</span>)
+                </button>
+                <button id="clientTabBtnPayments" onclick="switchClientPortalTab('payments')" style="padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; background: #334155; color: #CBD5E1;">
+                    💵 مدفوعاتي وسندات السداد (<span id="portalPaysCount">0</span>)
+                </button>
+            </div>
+
+            <!-- Tab 1: Client Invoices -->
+            <div id="clientPaneInvoices" style="display: block;">
+                <div class="section-card" style="background: #1E293B; border-color: #334155; color: #FFFFFF;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-weight: 700; font-size: 15px; color: #38BDF8;">🧾 قائمة الفواتير الصادرة (اضغط على الفاتورة لعرض بنودها 🔍):</span>
+                    </div>
+                    <div class="table-wrapper" style="max-height: 520px; border-color: #334155;">
+                        <table style="background: #1E293B; color: #FFFFFF;">
+                            <thead style="background: #0F172A; color: #94A3B8;">
+                                <tr>
+                                    <th style="width: 12%;">رقم الفاتورة</th>
+                                    <th style="width: 18%;">التاريخ والوقت</th>
+                                    <th style="width: 32%;">البيان والأصناف</th>
+                                    <th style="width: 14%;">الإجمالي</th>
+                                    <th style="width: 12%;">المدفوع</th>
+                                    <th style="width: 12%; text-align: center;">التفاصيل</th>
+                                </tr>
+                            </thead>
+                            <tbody id="portalInvoicesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Client Payments -->
+            <div id="clientPanePayments" style="display: none;">
+                <div class="section-card" style="background: #1E293B; border-color: #334155; color: #FFFFFF;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-weight: 700; font-size: 15px; color: #34D399;">💵 سجل الدفعات والمبالغ المسددة:</span>
+                    </div>
+                    <div class="table-wrapper" style="max-height: 520px; border-color: #334155;">
+                        <table style="background: #1E293B; color: #FFFFFF;">
+                            <thead style="background: #0F172A; color: #94A3B8;">
+                                <tr>
+                                    <th style="width: 12%;">رقم السند</th>
+                                    <th style="width: 18%;">التاريخ</th>
+                                    <th style="width: 18%;">المبلغ المسدد</th>
+                                    <th style="width: 15%;">طريقة الدفع</th>
+                                    <th style="width: 37%;">ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="portalPaymentsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -527,6 +664,7 @@
                         <button class="btn btn-secondary" onclick="openCloudConfigModal()"><span style="font-size: 14px;">⚙️</span> إعدادات السحابة</button>
                         <button class="btn btn-secondary" onclick="openAdminPasswordModal()"><span style="font-size: 14px;">🔒</span> كلمة مرور الويب</button>
                         <button class="btn btn-secondary" onclick="openActivationModal()"><span style="font-size: 14px;">🔑</span> ترخيص البرنامج</button>
+                        <button class="btn btn-secondary" onclick="openClientPortalFromAdmin()"><span style="font-size: 14px;">👤</span> بوابة العملاء</button>
                         <button class="btn btn-danger" onclick="clearAllData()" style="margin-right: auto;"><span style="font-size: 14px;">🗑️</span> تصفير وبدء من الصفر</button>
                     </div>
                 </div>
@@ -570,6 +708,13 @@
                             <input type="text" id="custPhoneInput" placeholder="01xxxxxxxxx" style="width: 100%;" />
                         </div>
                         <div class="form-group col" style="flex: 1.2; min-width: 110px;">
+                            <label>كود الدخول (PIN):</label>
+                            <div style="display: flex; gap: 4px;">
+                                <input type="text" id="custPinInput" placeholder="توليد تلقائي..." style="width: 100%; text-align: center; font-weight: bold; font-family: monospace;" />
+                                <button class="btn btn-secondary btn-sm" onclick="generateRandomCustomerPin()" title="توليد كود عشوائي">🎲</button>
+                            </div>
+                        </div>
+                        <div class="form-group col" style="flex: 1.2; min-width: 110px;">
                             <label>نوع العميل:</label>
                             <select id="custTypeSelect" style="width: 100%;">
                                 <option value="فوتوجرافر" selected>فوتوجرافر</option>
@@ -581,7 +726,7 @@
                             <label>رصيد افتتاحي:</label>
                             <input type="number" id="custOpeningBalInput" placeholder="0.00" value="0" style="width: 100%;" />
                         </div>
-                        <div class="form-group col" style="flex: 2.0; min-width: 160px;">
+                        <div class="form-group col" style="flex: 1.8; min-width: 140px;">
                             <label>ملاحظات:</label>
                             <input type="text" id="custNotesInput" placeholder="ملاحظات العميل..." style="width: 100%;" />
                         </div>
@@ -597,7 +742,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <div class="card-header-title"><span>👥 سجل العملاء والمديونيات:</span></div>
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <label>🔍 بحث بالاسم أو الهاتف:</label>
+                            <label>🔍 بحث بالاسم أو الهاتف أو الكود:</label>
                             <input type="text" id="custSearchInput" placeholder="ابحث هنا..." oninput="renderCustomersTable()" style="width: 220px;" />
                         </div>
                     </div>
@@ -605,12 +750,13 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th style="width: 22%;">اسم العميل</th>
-                                    <th style="width: 15%;">رقم الهاتف</th>
-                                    <th style="width: 14%;">نوع العميل</th>
-                                    <th style="width: 15%;">الرصيد المتبقي</th>
-                                    <th style="width: 20%;">ملاحظات</th>
-                                    <th style="width: 14%; text-align: center;">الإجراءات</th>
+                                    <th style="width: 20%;">اسم العميل</th>
+                                    <th style="width: 14%;">رقم الهاتف</th>
+                                    <th style="width: 12%; text-align: center;">كود العميل (PIN)</th>
+                                    <th style="width: 13%;">نوع العميل</th>
+                                    <th style="width: 14%;">الرصيد المتبقي</th>
+                                    <th style="width: 15%;">ملاحظات</th>
+                                    <th style="width: 12%; text-align: center;">الإجراءات</th>
                                 </tr>
                             </thead>
                             <tbody id="customersTableBody"></tbody>
@@ -708,7 +854,7 @@
                     <div class="cat-btn-pad" id="subsizePad"></div>
                     <div style="display: flex; gap: 12px; align-items: center; border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px;">
                         <div id="selectedItemDisplay" style="font-weight: 700; color: var(--tag-fg); font-size: 12.5px; min-width: 250px;">
-                            المحدد: مقاس 10x15 (صورة شخصية فاخرة)
+                            المحدد: لم يتم اختيار مقاس بعد
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <label>الكمية:</label>
@@ -716,7 +862,7 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <label>السعر:</label>
-                            <input type="number" id="invItemPrice" value="25.00" style="width: 90px;" />
+                            <input type="number" id="invItemPrice" value="0.00" style="width: 90px;" />
                         </div>
                         <button class="btn btn-primary" onclick="handleAddInvoiceItem()">➕ إضافة للبند</button>
                         <button class="btn btn-secondary" onclick="handleResetInvoiceItem()">إلغاء التحديد</button>
@@ -1028,6 +1174,13 @@
                 <input type="hidden" id="editCustId" />
                 <div class="form-group col"><label>اسم العميل:</label><input type="text" id="editCustName" style="width: 100%;" /></div>
                 <div class="form-group col"><label>رقم التليفون:</label><input type="text" id="editCustPhone" style="width: 100%;" /></div>
+                <div class="form-group col">
+                    <label>كود الدخول السري (PIN):</label>
+                    <div style="display: flex; gap: 4px;">
+                        <input type="text" id="editCustPin" placeholder="كود العميل..." style="width: 100%; text-align: center; font-weight: bold; font-family: monospace;" />
+                        <button class="btn btn-secondary btn-sm" onclick="generateRandomCustomerPin('editCustPin')" title="توليد كود عشوائي">🎲</button>
+                    </div>
+                </div>
                 <div class="form-group col"><label>نوع العميل:</label>
                     <select id="editCustType" style="width: 100%;">
                         <option value="فوتوجرافر">فوتوجرافر</option>
@@ -1234,38 +1387,90 @@
             }
         }
 
-        // Web Admin Authentication Logic
-        function checkWebAuth() {
-            const isDesktop = typeof window.pywebview !== 'undefined';
-            if (isDesktop) {
-                const overlay = document.getElementById("webLoginOverlay");
-                if (overlay) overlay.style.display = "none";
-                return;
-            }
+        // ================= PORTAL & AUTHENTICATION LOGIC =================
+        let currentPortalCustomer = null;
 
-            if (sessionStorage.getItem('studio_admin_authenticated') === 'true') {
-                const overlay = document.getElementById("webLoginOverlay");
-                if (overlay) overlay.style.display = "none";
-                return;
-            }
+        function generateRandomCustomerPin(targetInputId = 'custPinInput') {
+            const pin = Math.floor(1000 + Math.random() * 9000).toString();
+            const el = document.getElementById(targetInputId);
+            if (el) el.value = pin;
+            return pin;
+        }
 
-            const overlay = document.getElementById("webLoginOverlay");
-            if (overlay) {
-                overlay.style.display = "flex";
-                setTimeout(() => {
-                    const inp = document.getElementById("loginPasswordInput");
-                    if (inp) inp.focus();
-                }, 100);
+        function extractCustomerPin(cust) {
+            if (!cust) return "1234";
+            if (cust.pin) return String(cust.pin);
+            if (cust.pinCode) return String(cust.pinCode);
+            if (cust.notes) {
+                const match = cust.notes.match(/\[PIN:(\w+)\]/);
+                if (match) return match[1];
+            }
+            return String(1000 + ((Number(cust.id) || 1) * 37) % 9000);
+        }
+
+        function copyCustomerPin(pin) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(pin).then(() => {
+                    showToast(`📋 تم نسخ كود العميل (${pin}) بنجاح!`);
+                });
+            } else {
+                prompt("انسخ كود العميل:", pin);
             }
         }
 
-        async function handleWebLogin() {
-            const inp = document.getElementById("loginPasswordInput");
-            const err = document.getElementById("loginErrorMsg");
+        function checkWebAuth() {
+            const isDesktop = typeof window.pywebview !== 'undefined';
+            const portalLanding = document.getElementById("portalLandingOverlay");
+            const clientPortal = document.getElementById("clientPortalContainer");
+
+            if (isDesktop) {
+                if (portalLanding) portalLanding.style.display = "none";
+                if (clientPortal) clientPortal.style.display = "none";
+                return;
+            }
+
+            const authRole = sessionStorage.getItem('studio_auth_role');
+            const authClientPin = sessionStorage.getItem('studio_auth_client_pin');
+
+            if (authRole === 'admin') {
+                if (portalLanding) portalLanding.style.display = "none";
+                if (clientPortal) clientPortal.style.display = "none";
+            } else if (authRole === 'client' && authClientPin) {
+                const cust = (customers || []).find(c => extractCustomerPin(c) === authClientPin);
+                if (cust) {
+                    if (portalLanding) portalLanding.style.display = "none";
+                    renderClientPortal(cust);
+                } else {
+                    if (portalLanding) portalLanding.style.display = "flex";
+                }
+            } else {
+                if (portalLanding) portalLanding.style.display = "flex";
+                if (clientPortal) clientPortal.style.display = "none";
+            }
+        }
+
+        function showAdminLoginModal() {
+            const el = document.getElementById("adminLoginModalOverlay");
+            const inp = document.getElementById("adminLoginPwdInput");
+            const err = document.getElementById("adminLoginErrMsg");
+            if (err) err.innerText = "";
+            if (inp) inp.value = "";
+            if (el) el.style.display = "flex";
+            setTimeout(() => { if (inp) inp.focus(); }, 100);
+        }
+
+        function closeAdminLoginModal() {
+            const el = document.getElementById("adminLoginModalOverlay");
+            if (el) el.style.display = "none";
+        }
+
+        async function executeAdminLogin() {
+            const inp = document.getElementById("adminLoginPwdInput");
+            const err = document.getElementById("adminLoginErrMsg");
             if (!inp) return;
             const pwd = inp.value.trim();
             if (!pwd) {
-                if (err) err.innerText = "يرجى إدخال كلمة المرور";
+                if (err) err.innerText = "يرجى كتابة كلمة المرور";
                 return;
             }
 
@@ -1281,15 +1486,195 @@
             }
 
             if (pwd === adminPass || pwd === "admin123" || pwd === "123456") {
-                sessionStorage.setItem('studio_admin_authenticated', 'true');
-                const overlay = document.getElementById("webLoginOverlay");
-                if (overlay) overlay.style.display = "none";
-                showToast("👋 أهلاً بك! تم تسجيل الدخول بنجاح.");
+                sessionStorage.setItem('studio_auth_role', 'admin');
+                closeAdminLoginModal();
+                const landing = document.getElementById("portalLandingOverlay");
+                if (landing) landing.style.display = "none";
+                showToast("👋 مرحباً بك في لوحة تحكم الإدارة!");
+                refreshDashboard();
             } else {
                 if (err) err.innerText = "❌ كلمة المرور غير صحيحة، حاول مجدداً";
                 inp.value = "";
                 inp.focus();
             }
+        }
+
+        function showClientLoginModal() {
+            const el = document.getElementById("clientLoginModalOverlay");
+            const inp = document.getElementById("clientLoginPinInput");
+            const err = document.getElementById("clientLoginErrMsg");
+            if (err) err.innerText = "";
+            if (inp) inp.value = "";
+            if (el) el.style.display = "flex";
+            setTimeout(() => { if (inp) inp.focus(); }, 100);
+        }
+
+        function closeClientLoginModal() {
+            const el = document.getElementById("clientLoginModalOverlay");
+            if (el) el.style.display = "none";
+        }
+
+        async function executeClientLogin() {
+            const inp = document.getElementById("clientLoginPinInput");
+            const err = document.getElementById("clientLoginErrMsg");
+            if (!inp) return;
+            const pin = inp.value.trim();
+            if (!pin) {
+                if (err) err.innerText = "يرجى كتابة كود العميل السري (PIN)";
+                return;
+            }
+
+            if (_supabaseClient) {
+                try { await pullFromCloud(true); } catch(e) {}
+            }
+
+            const cust = (customers || []).find(c => extractCustomerPin(c) === pin || (c.phone && c.phone === pin));
+            if (cust) {
+                sessionStorage.setItem('studio_auth_role', 'client');
+                sessionStorage.setItem('studio_auth_client_pin', extractCustomerPin(cust));
+                closeClientLoginModal();
+                const landing = document.getElementById("portalLandingOverlay");
+                if (landing) landing.style.display = "none";
+                renderClientPortal(cust);
+                showToast(`👋 أهلاً بك يا ${cust.name}! تم فتح كشف حسابك بنجاح.`);
+            } else {
+                if (err) err.innerText = "❌ لم يتم العثور على عميل بهذا الكود السري. تأكد من الكود وحاول مجدداً";
+                inp.value = "";
+                inp.focus();
+            }
+        }
+
+        function renderClientPortal(cust) {
+            currentPortalCustomer = cust;
+            const portal = document.getElementById("clientPortalContainer");
+            if (!portal) return;
+
+            portal.style.display = "flex";
+            document.getElementById("portalCustTitleName").innerText = `${cust.name} (${cust.type || 'عميل'}) - هاتف: ${cust.phone || '-'}`;
+
+            const bal = getCustomerBalance(cust.name);
+            const balBadge = document.getElementById("portalCustBalanceBadge");
+            if (balBadge) {
+                if (bal > 0) {
+                    balBadge.style.background = "#7F1D1D";
+                    balBadge.style.color = "#FECACA";
+                    balBadge.innerText = `🔴 المديونية المستحقة عليك: +${bal.toFixed(2)} ج`;
+                } else if (bal < 0) {
+                    balBadge.style.background = "#064E3B";
+                    balBadge.style.color = "#A7F3D0";
+                    balBadge.innerText = `🟢 رصيد دائن لك: ${Math.abs(bal).toFixed(2)} ج`;
+                } else {
+                    balBadge.style.background = "#1E293B";
+                    balBadge.style.color = "#94A3B8";
+                    balBadge.innerText = `⚪ الحساب خالص (0.00 ج)`;
+                }
+            }
+
+            const custInvs = (allInvoices || []).filter(i => i && i.customer === cust.name);
+            document.getElementById("portalInvsCount").innerText = custInvs.length;
+            const invTbody = document.getElementById("portalInvoicesTableBody");
+            invTbody.innerHTML = "";
+
+            if (custInvs.length === 0) {
+                invTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color: #94A3B8;">لا توجد أي فواتير مسجلة لحسابك حتى الآن</td></tr>`;
+            } else {
+                custInvs.forEach(inv => {
+                    const items = Array.isArray(inv.items) ? inv.items : [];
+                    const itemsDesc = items.map(it => `${it.name} (${it.size || '-'}) × ${it.qty || 1}`).join(' ، ') || 'فاتورة استوديو';
+                    const invSum = items.reduce((s, it) => s + (Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0))), 0);
+                    const net = Math.max(0, invSum - (Number(inv.discount) || 0));
+
+                    const tr = document.createElement("tr");
+                    tr.style.cursor = "pointer";
+                    tr.title = "اضغط لعرض تفاصيل البنود";
+                    tr.onclick = () => openInvoiceDetailsModal(inv.id);
+                    tr.innerHTML = `
+                        <td style="font-weight: 700; color: #38BDF8;">#${inv.id}</td>
+                        <td style="color: #94A3B8;">${inv.date || '-'} <small style="color: #64748B;">${inv.time || ''}</small></td>
+                        <td style="color: #E2E8F0; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${itemsDesc}</td>
+                        <td style="color: #60A5FA; font-weight: 700;">${net.toFixed(2)} ج</td>
+                        <td style="color: #34D399; font-weight: 600;">${(Number(inv.paid) || 0).toFixed(2)} ج</td>
+                        <td style="text-align: center;">
+                            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openInvoiceDetailsModal(${inv.id})">🔍 التفاصيل</button>
+                        </td>
+                    `;
+                    invTbody.appendChild(tr);
+                });
+            }
+
+            const custPays = (allPayments || []).filter(p => p && p.customer === cust.name);
+            document.getElementById("portalPaysCount").innerText = custPays.length;
+            const payTbody = document.getElementById("portalPaymentsTableBody");
+            payTbody.innerHTML = "";
+
+            if (custPays.length === 0) {
+                payTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 30px; color: #94A3B8;">لا توجد أي سندات سداد مسجلة حتى الآن</td></tr>`;
+            } else {
+                custPays.forEach(p => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td style="font-weight: 700; color: #34D399;">#${p.id}</td>
+                        <td style="color: #94A3B8;">${p.date || '-'}</td>
+                        <td style="color: #34D399; font-weight: 800; font-size: 15px;">${(Number(p.amount) || 0).toFixed(2)} ج</td>
+                        <td><span class="client-tag" style="background:#1E3A8A; color:#93C5FD;">${p.method || 'نقدي'}</span></td>
+                        <td style="color: #CBD5E1;">${p.notes || '-'}</td>
+                    `;
+                    payTbody.appendChild(tr);
+                });
+            }
+        }
+
+        function switchClientPortalTab(tab) {
+            const btnInv = document.getElementById("clientTabBtnInvoices");
+            const btnPay = document.getElementById("clientTabBtnPayments");
+            const paneInv = document.getElementById("clientPaneInvoices");
+            const panePay = document.getElementById("clientPanePayments");
+
+            if (tab === 'invoices') {
+                btnInv.style.background = "#2563EB";
+                btnInv.style.color = "#FFFFFF";
+                btnPay.style.background = "#334155";
+                btnPay.style.color = "#CBD5E1";
+                paneInv.style.display = "block";
+                panePay.style.display = "none";
+            } else {
+                btnPay.style.background = "#10B981";
+                btnPay.style.color = "#FFFFFF";
+                btnInv.style.background = "#334155";
+                btnInv.style.color = "#CBD5E1";
+                panePay.style.display = "block";
+                paneInv.style.display = "none";
+            }
+        }
+
+        function logoutClientPortal() {
+            sessionStorage.removeItem('studio_auth_role');
+            sessionStorage.removeItem('studio_auth_client_pin');
+            const portal = document.getElementById("clientPortalContainer");
+            if (portal) portal.style.display = "none";
+            const landing = document.getElementById("portalLandingOverlay");
+            if (landing) landing.style.display = "flex";
+            showToast("👋 تم تسجيل الخروج من بوابة العميل.");
+        }
+
+        function printClientStatement() {
+            if (!currentPortalCustomer) return;
+            const sel = document.getElementById("stmtCustomerSelect");
+            if (sel) sel.value = currentPortalCustomer.name;
+            renderStatement();
+            setTimeout(() => {
+                handlePrintStatement();
+            }, 300);
+        }
+
+        function openClientPortalFromAdmin() {
+            if (customers.length === 0) {
+                alert("يرجى إضافة عميل أولاً لمعاينة بوابة العملاء");
+                return;
+            }
+            const firstCust = customers[0];
+            renderClientPortal(firstCust);
+            showToast(`👁️ جاري معاينة بوابة العميل (${firstCust.name})`);
         }
 
         function getAdminPassword() {
@@ -1484,11 +1869,11 @@
 
             let list = customers;
             if (query) {
-                list = list.filter(c => c.name.toLowerCase().includes(query) || (c.phone && c.phone.includes(query)));
+                list = list.filter(c => c.name.toLowerCase().includes(query) || (c.phone && c.phone.includes(query)) || extractCustomerPin(c).includes(query));
             }
 
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 25px; color: var(--muted);">لا يوجد عملاء مطابقين للبحث</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 25px; color: var(--muted);">لا يوجد عملاء مطابقين للبحث</td></tr>`;
                 return;
             }
 
@@ -1503,13 +1888,19 @@
                     balHtml = `<span style="color: var(--muted);">0.00 ج (خالص)</span>`;
                 }
 
+                const pin = extractCustomerPin(c);
+
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td><strong>${c.name}</strong></td>
                     <td style="color: var(--muted);">${c.phone || '-'}</td>
+                    <td style="text-align: center;">
+                        <span style="background:#EDF2F7; padding:3px 8px; border-radius:4px; font-family:monospace; font-weight:700; color:#2B6CB0;">${pin}</span>
+                        <button class="btn btn-secondary btn-sm" onclick="copyCustomerPin('${pin}')" title="نسخ الكود" style="padding: 2px 6px; font-size: 11px;">📋</button>
+                    </td>
                     <td><span class="client-tag">${c.type}</span></td>
                     <td>${balHtml}</td>
-                    <td style="color: var(--muted);">${c.notes || '-'}</td>
+                    <td style="color: var(--muted);">${c.notes ? c.notes.replace(/\[PIN:\w+\]/, '').trim() : '-'}</td>
                     <td>
                         <div class="cell-actions">
                             <button class="btn btn-primary btn-sm" onclick="openEditCustomerModal(${c.id})">✏️ تعديل</button>
@@ -1526,23 +1917,25 @@
             if (!name) { alert("من فضلك أدخل اسم العميل"); return; }
 
             const phone = document.getElementById("custPhoneInput").value.trim();
+            const pin = document.getElementById("custPinInput").value.trim() || generateRandomCustomerPin('custPinInput');
             const type = document.getElementById("custTypeSelect").value;
             const opBal = parseFloat(document.getElementById("custOpeningBalInput").value) || 0;
-            const notes = document.getElementById("custNotesInput").value.trim();
+            let notes = document.getElementById("custNotesInput").value.trim();
 
             const nextId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
-            const newCust = { id: nextId, name, phone, type, openingBalance: opBal, notes };
+            const newCust = { id: nextId, name, phone, pin, type, openingBalance: opBal, notes };
             customers.push(newCust);
             saveData();
             handleClearCustomerInputs();
             renderCustomersTable();
             cloudPushCustomer(newCust);
-            showToast(`تمت إضافة العميل (${name}) بنجاح 🎉`);
+            showToast(`تمت إضافة العميل (${name}) بنجاح! كود الدخول: ${pin} 🎉`);
         }
 
         function handleClearCustomerInputs() {
             document.getElementById("custNameInput").value = "";
             document.getElementById("custPhoneInput").value = "";
+            document.getElementById("custPinInput").value = "";
             document.getElementById("custOpeningBalInput").value = "0";
             document.getElementById("custNotesInput").value = "";
         }
@@ -1553,9 +1946,10 @@
             document.getElementById("editCustId").value = cust.id;
             document.getElementById("editCustName").value = cust.name;
             document.getElementById("editCustPhone").value = cust.phone || "";
+            document.getElementById("editCustPin").value = extractCustomerPin(cust);
             document.getElementById("editCustType").value = cust.type;
             document.getElementById("editCustOpeningBal").value = cust.openingBalance || 0;
-            document.getElementById("editCustNotes").value = cust.notes || "";
+            document.getElementById("editCustNotes").value = cust.notes ? cust.notes.replace(/\[PIN:\w+\]/, '').trim() : "";
             document.getElementById("editCustomerModal").style.display = "flex";
         }
 
@@ -1574,6 +1968,7 @@
 
             cust.name = newName;
             cust.phone = document.getElementById("editCustPhone").value.trim();
+            cust.pin = document.getElementById("editCustPin").value.trim() || extractCustomerPin(cust);
             cust.type = document.getElementById("editCustType").value;
             cust.openingBalance = parseFloat(document.getElementById("editCustOpeningBal").value) || 0;
             cust.notes = document.getElementById("editCustNotes").value.trim();
@@ -1707,11 +2102,8 @@
         }
 
         // ================= 4. INVOICES LOGIC =================
-        let invoiceItems = [
-            { name: "صورة شخصية فاخرة", size: "10x15", qty: 2, price: 25.0, total: 50.0 },
-            { name: "كارت دعوة تخرج", size: "10x13", qty: 5, price: 30.0, total: 150.0 }
-        ];
-        let currentItem = { name: "صورة شخصية فاخرة", size: "10x15", price: 25.0 };
+        let invoiceItems = [];
+        let currentItem = null;
         let editingItemIdx = null;
         let activeInvoiceId = null;
 
@@ -1803,31 +2195,39 @@
             tbody.innerHTML = "";
             let net = 0;
 
-            invoiceItems.forEach((it, idx) => {
-                net += it.total;
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td><strong>${it.name}</strong></td>
-                    <td style="color: var(--muted);">${it.size || '-'}</td>
-                    <td>${it.qty}</td>
-                    <td style="color: var(--muted);">${it.price.toFixed(2)} ج</td>
-                    <td style="color: var(--primary); font-weight: 700;">${it.total.toFixed(2)} ج</td>
-                    <td>
-                        <div class="cell-actions">
-                            <button class="btn btn-primary btn-sm" onclick="handleEditInvoiceItem(${idx})">✏️</button>
-                            <button class="btn btn-danger btn-sm" onclick="handleDeleteInvoiceItem(${idx})">🗑️</button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            if (invoiceItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 25px; color: var(--muted); font-weight:600;">لا توجد بنود مضافة للفاتورة حتى الآن. اختر المقاس واضغط (إضافة للبند ➕)</td></tr>`;
+            } else {
+                invoiceItems.forEach((it, idx) => {
+                    net += it.total;
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${it.name}</strong></td>
+                        <td style="color: var(--muted);">${it.size || '-'}</td>
+                        <td>${it.qty}</td>
+                        <td style="color: var(--muted);">${it.price.toFixed(2)} ج</td>
+                        <td style="color: var(--primary); font-weight: 700;">${it.total.toFixed(2)} ج</td>
+                        <td>
+                            <div class="cell-actions">
+                                <button class="btn btn-primary btn-sm" onclick="handleEditInvoiceItem(${idx})">✏️</button>
+                                <button class="btn btn-danger btn-sm" onclick="handleDeleteInvoiceItem(${idx})">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
 
             document.getElementById("invNetTotalTxt").innerText = `${net.toFixed(2)} ج`;
         }
 
         function handleAddInvoiceItem() {
+            if (!currentItem) {
+                alert("من فضلك اختر مقاساً أو صنفاً أولاً من لوحة المقاسات بالأعلى");
+                return;
+            }
             const qty = parseInt(document.getElementById("invItemQty").value) || 1;
-            const price = parseFloat(document.getElementById("invItemPrice").value) || currentItem.price;
+            const price = parseFloat(document.getElementById("invItemPrice").value) || currentItem.price || 0;
 
             if (editingItemIdx !== null) {
                 invoiceItems[editingItemIdx] = { name: currentItem.name, size: currentItem.size, qty, price, total: qty * price };
@@ -1853,7 +2253,12 @@
         }
 
         function handleResetInvoiceItem() {
+            document.querySelectorAll("#categoryPad .pad-btn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll("#subsizePad .subsize-btn").forEach(b => b.classList.remove("active"));
+            currentItem = null;
             editingItemIdx = null;
+            document.getElementById("selectedItemDisplay").innerText = "المحدد: لم يتم اختيار مقاس بعد";
+            document.getElementById("invItemPrice").value = "0.00";
             document.getElementById("invItemQty").value = "1";
         }
 
@@ -3226,12 +3631,15 @@
                 if (isDelete) {
                     await _supabaseClient.from('customers').delete().eq('name', cust.name);
                 } else {
+                    const pin = extractCustomerPin(cust);
+                    let rawNotes = (cust.notes || '').replace(/\[PIN:\w+\]/, '').trim();
+                    const notesWithPin = rawNotes ? `${rawNotes} [PIN:${pin}]` : `[PIN:${pin}]`;
                     const custPayload = {
                         local_id: cust.id,
                         name: cust.name,
                         phone: cust.phone || '',
                         customer_type: cust.type || 'استوديو',
-                        notes: cust.notes || '',
+                        notes: notesWithPin,
                         opening_balance: Number(cust.openingBalance) || 0,
                         updated_at: new Date().toISOString()
                     };
