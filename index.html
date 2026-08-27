@@ -672,7 +672,7 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <label>التاريخ:</label>
-                            <input type="date" id="invDateInput" value="2026-08-25" onchange="handleInvoiceDateChange()" style="width: 145px;" />
+                            <input type="date" id="invDateInput" onchange="handleInvoiceDateChange()" style="width: 145px;" />
                         </div>
                         <div id="invEditingNotice" style="margin-right: auto; color: var(--danger); font-weight: 700; font-size: 12px;"></div>
                     </div>
@@ -765,7 +765,7 @@
                         </div>
                         <div class="form-group col" style="flex: 1.2; min-width: 120px;">
                             <label>التاريخ:</label>
-                            <input type="date" id="payDateInput" value="2026-08-25" style="width: 100%;" />
+                            <input type="date" id="payDateInput" style="width: 100%;" />
                         </div>
                         <div class="form-group col" style="flex: 1.1; min-width: 100px;">
                             <label>المبلغ المدفوع:</label>
@@ -1172,6 +1172,14 @@
         const SUPABASE_URL = "https://uikxkghfjcykukauuowz.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpa3hrZ2hmamN5a3VrYXV1b3d6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzg1NTIsImV4cCI6MjEwMjY1NDU1Mn0.FHiiAi5LhQP8gew7fu-Y676159AP3k_2ssEAp9NqUKs";
 
+        function getTodayDateStr() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // Default Initial Seed Data
         const defaultCustomers = [
             { id: 1, name: "أحمد (استوديو الأهرام)", phone: "01123456789", type: "استوديو", openingBalance: 500.0, notes: "عميل دائم" },
@@ -1365,7 +1373,7 @@
                 const totalCusts = (customers || []).length;
                 document.getElementById("dashCustomersCount").innerText = totalCusts;
 
-                const today = "2026-08-25";
+                const today = getTodayDateStr();
                 const todayInvs = (allInvoices || []).filter(i => i && i.date === today);
                 const todayInvCount = todayInvs.length;
                 const todayInvTot = todayInvs.reduce((s, i) => {
@@ -2132,6 +2140,8 @@
         // ================= 5. PAYMENTS LOGIC =================
         function updatePaymentCustomerDropdown() {
             const sel = document.getElementById("payCustomerSelect");
+            if (!sel) return;
+            const curVal = sel.value;
             sel.innerHTML = "";
             customers.forEach(c => {
                 const opt = document.createElement("option");
@@ -2139,6 +2149,12 @@
                 opt.innerText = c.name;
                 sel.appendChild(opt);
             });
+            if (curVal && customers.some(c => c.name === curVal)) {
+                sel.value = curVal;
+            } else if (customers.length > 0) {
+                sel.value = customers[0].name;
+            }
+            updatePaymentCustomerSummary();
         }
 
         function handlePaymentCustomerChange() {
@@ -2278,12 +2294,19 @@
         // ================= 6. MONTHLY REPORT LOGIC =================
         function updateReportCustomerDropdown() {
             const sel = document.getElementById("reportCustomerSelect");
-            sel.innerHTML = '<option value="كل العملاء" selected>كل العملاء</option>';
+            if (!sel) return;
+            const curVal = sel.value;
+            sel.innerHTML = '<option value="كل العملاء">كل العملاء</option>';
             customers.forEach(c => {
                 const opt = document.createElement("option");
                 opt.value = c.name; opt.innerText = c.name;
                 sel.appendChild(opt);
             });
+            if (curVal && (curVal === "كل العملاء" || customers.some(c => c.name === curVal))) {
+                sel.value = curVal;
+            } else {
+                sel.value = "كل العملاء";
+            }
         }
 
         function renderMonthlyReport() {
@@ -2897,13 +2920,14 @@
         let activeModalInvoice = null;
 
         function openInvoiceDetailsModal(inv) {
+            if (!inv) return;
             activeModalInvoice = inv;
             document.getElementById("modalInvTitle").innerText = `🧾 تفاصيل الفاتورة رقم #${inv.id}`;
-            document.getElementById("modalCustName").innerText = inv.customer;
-            document.getElementById("modalInvDateTime").innerText = `${inv.date} - الساعة ${inv.time || '18:30:00'}`;
+            document.getElementById("modalCustName").innerText = inv.customer || "-";
+            document.getElementById("modalInvDateTime").innerText = `${inv.date || '-'} - الساعة ${inv.time || '18:30:00'}`;
             
             const cust = customers.find(c => c.name === inv.customer);
-            document.getElementById("modalCustPhone").innerText = cust ? cust.phone : "01123456789";
+            document.getElementById("modalCustPhone").innerText = cust ? (cust.phone || "-") : "-";
 
             const bal = getCustomerBalance(inv.customer);
             const balElem = document.getElementById("modalCustBalance");
@@ -2922,18 +2946,28 @@
             tbody.innerHTML = "";
             let net = 0;
 
-            inv.items.forEach(it => {
-                net += it.total;
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td><strong>${it.name}</strong></td>
-                    <td style="color: var(--muted);">${it.size || '-'}</td>
-                    <td style="text-align: center;">${it.qty}</td>
-                    <td style="text-align: center;">${it.price.toFixed(2)} ج</td>
-                    <td style="text-align: center; font-weight: 700; color: var(--primary);">${it.total.toFixed(2)} ج</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            const items = Array.isArray(inv.items) ? inv.items : [];
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--muted); font-weight:600;">لا توجد بنود تفصيلية مسجلة لهذه الفاتورة</td></tr>`;
+            } else {
+                items.forEach(it => {
+                    const itName = it.name || it.product_name || 'بند';
+                    const itSize = it.size || '-';
+                    const itQty = Number(it.qty || it.quantity) || 1;
+                    const itPrice = Number(it.price || it.unit_price) || 0;
+                    const itTotal = Number(it.total) || (itQty * itPrice);
+                    net += itTotal;
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${itName}</strong></td>
+                        <td style="color: var(--muted);">${itSize}</td>
+                        <td style="text-align: center;">${itQty}</td>
+                        <td style="text-align: center;">${itPrice.toFixed(2)} ج</td>
+                        <td style="text-align: center; font-weight: 700; color: var(--primary);">${itTotal.toFixed(2)} ج</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
 
             document.getElementById("modalNetTotal").innerText = `${net.toFixed(2)} ج`;
             document.getElementById("invoiceDetailsModal").style.display = "flex";
@@ -3314,7 +3348,7 @@
                 let changed = false;
 
                 if (resCust.data && resCust.data.length > 0) {
-                    customers = resCust.data.map(c => ({
+                    const newCusts = resCust.data.map(c => ({
                         id: Number(c.local_id || c.id),
                         name: c.name,
                         phone: c.phone || '',
@@ -3322,28 +3356,35 @@
                         openingBalance: Number(c.opening_balance) || 0,
                         notes: c.notes || ''
                     }));
-                    changed = true;
+                    if (JSON.stringify(newCusts) !== JSON.stringify(customers)) {
+                        customers = newCusts;
+                        changed = true;
+                    }
                 }
 
                 if (resProd.data && resProd.data.length > 0) {
                     const validProds = resProd.data.filter(p => p.category !== '__APP_SETTINGS__');
                     if (validProds.length > 0) {
-                        products = validProds.map(p => ({
+                        const newProds = validProds.map(p => ({
                             id: Number(p.local_id || p.id),
                             category: p.category || 'عام',
                             name: p.name,
                             size: p.size || '',
                             price: Number(p.default_unit_price) || 0
                         }));
-                        changed = true;
+                        if (JSON.stringify(newProds) !== JSON.stringify(products)) {
+                            products = newProds;
+                            changed = true;
+                        }
                     }
                 }
 
                 const invoiceItemsMap = {};
                 if (resItm.data && resItm.data.length > 0) {
                     resItm.data.forEach(it => {
-                        if (!invoiceItemsMap[it.invoice_id]) invoiceItemsMap[it.invoice_id] = [];
-                        invoiceItemsMap[it.invoice_id].push({
+                        const invKey = it.invoice_id;
+                        if (!invoiceItemsMap[invKey]) invoiceItemsMap[invKey] = [];
+                        invoiceItemsMap[invKey].push({
                             name: it.product_name,
                             size: it.size || '',
                             qty: Number(it.quantity) || 1,
@@ -3354,9 +3395,13 @@
                 }
 
                 if (resInv.data && resInv.data.length > 0) {
-                    allInvoices = resInv.data.map(i => {
+                    const newInvs = resInv.data.map(i => {
                         const invId = Number(i.local_id || i.id);
-                        let items = Array.isArray(i.items) && i.items.length > 0 ? i.items : (invoiceItemsMap[i.id] || []);
+                        let items = (invoiceItemsMap[i.id] && invoiceItemsMap[i.id].length > 0)
+                            ? invoiceItemsMap[i.id]
+                            : (invoiceItemsMap[invId] && invoiceItemsMap[invId].length > 0)
+                                ? invoiceItemsMap[invId]
+                                : (Array.isArray(i.items) && i.items.length > 0 ? i.items : []);
                         return {
                             id: invId,
                             customer: i.customer_name,
@@ -3367,11 +3412,14 @@
                             items: items
                         };
                     });
-                    changed = true;
+                    if (JSON.stringify(newInvs) !== JSON.stringify(allInvoices)) {
+                        allInvoices = newInvs;
+                        changed = true;
+                    }
                 }
 
                 if (resPay.data && resPay.data.length > 0) {
-                    allPayments = resPay.data.map(p => ({
+                    const newPays = resPay.data.map(p => ({
                         id: Number(p.local_id || p.id),
                         customer: p.customer_name,
                         date: p.payment_date,
@@ -3381,7 +3429,10 @@
                         method: p.payment_method || 'نقدي',
                         notes: p.notes || ''
                     }));
-                    changed = true;
+                    if (JSON.stringify(newPays) !== JSON.stringify(allPayments)) {
+                        allPayments = newPays;
+                        changed = true;
+                    }
                 }
 
                 if (changed) {
@@ -3475,6 +3526,18 @@
         }
 
         // ================= INIT =================
+        const todayStr = getTodayDateStr();
+        const [curYear, curMonth] = todayStr.split('-');
+
+        if (document.getElementById("invDateInput")) document.getElementById("invDateInput").value = todayStr;
+        if (document.getElementById("payDateInput")) document.getElementById("payDateInput").value = todayStr;
+        if (document.getElementById("reportFromDate")) document.getElementById("reportFromDate").value = todayStr;
+        if (document.getElementById("reportToDate")) document.getElementById("reportToDate").value = todayStr;
+
+        if (document.getElementById("reportMonthSelect")) document.getElementById("reportMonthSelect").value = curMonth;
+        if (document.getElementById("reportYearSelect")) document.getElementById("reportYearSelect").value = curYear;
+        if (document.getElementById("invMonthFilter")) document.getElementById("invMonthFilter").value = `${curYear}-${curMonth}`;
+
         initSupabase();
         // Background Heartbeat Sync: automatically sync any changes every 3 seconds
         setInterval(() => {
