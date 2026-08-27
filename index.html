@@ -3170,7 +3170,7 @@
                 if (isDelete) {
                     await _supabaseClient.from('customers').delete().eq('name', cust.name);
                 } else {
-                    await _supabaseClient.from('customers').upsert({
+                    const custPayload = {
                         local_id: cust.id,
                         name: cust.name,
                         phone: cust.phone || '',
@@ -3178,7 +3178,13 @@
                         notes: cust.notes || '',
                         opening_balance: Number(cust.openingBalance) || 0,
                         updated_at: new Date().toISOString()
-                    }, { onConflict: 'name' });
+                    };
+                    const { data: existing } = await _supabaseClient.from('customers').select('id').eq('name', cust.name).maybeSingle();
+                    if (existing && existing.id) {
+                        await _supabaseClient.from('customers').update(custPayload).eq('id', existing.id);
+                    } else {
+                        await _supabaseClient.from('customers').insert([custPayload]);
+                    }
                 }
             } catch(e) {
                 console.error("Cloud push customer error:", e);
@@ -3191,14 +3197,20 @@
                 if (isDelete) {
                     await _supabaseClient.from('products').delete().match({ category: prod.category, name: prod.name });
                 } else {
-                    await _supabaseClient.from('products').upsert({
+                    const prodPayload = {
                         local_id: prod.id,
                         category: prod.category || 'عام',
                         name: prod.name,
                         size: prod.size || '',
                         default_unit_price: Number(prod.price) || 0,
                         updated_at: new Date().toISOString()
-                    }, { onConflict: 'category,name' });
+                    };
+                    const { data: existing } = await _supabaseClient.from('products').select('id').match({ category: prod.category, name: prod.name }).maybeSingle();
+                    if (existing && existing.id) {
+                        await _supabaseClient.from('products').update(prodPayload).eq('id', existing.id);
+                    } else {
+                        await _supabaseClient.from('products').insert([prodPayload]);
+                    }
                 }
             } catch(e) {
                 console.error("Cloud push product error:", e);
@@ -3222,7 +3234,7 @@
                     const discount = Number(inv.discount) || 0;
                     const total = Math.max(0, subtotal - discount);
 
-                    const { data: insertedInv } = await _supabaseClient.from('invoices').upsert({
+                    const invPayload = {
                         local_id: inv.id,
                         customer_name: inv.customer,
                         invoice_date: inv.date,
@@ -3233,10 +3245,19 @@
                         paid_amount: Number(inv.paid) || 0,
                         items: items,
                         updated_at: new Date().toISOString()
-                    }, { onConflict: 'local_id' }).select();
+                    };
 
-                    if (insertedInv && insertedInv.length > 0) {
-                        const invDbId = insertedInv[0].id;
+                    let invDbId = null;
+                    const { data: existing } = await _supabaseClient.from('invoices').select('id').eq('local_id', inv.id).maybeSingle();
+                    if (existing && existing.id) {
+                        invDbId = existing.id;
+                        await _supabaseClient.from('invoices').update(invPayload).eq('id', invDbId);
+                    } else {
+                        const { data: inserted } = await _supabaseClient.from('invoices').insert([invPayload]).select();
+                        if (inserted && inserted.length > 0) invDbId = inserted[0].id;
+                    }
+
+                    if (invDbId) {
                         try {
                             await _supabaseClient.from('invoice_items').delete().eq('invoice_id', invDbId);
                             const itemsToInsert = items.map(it => ({
@@ -3264,7 +3285,7 @@
                 if (isDelete) {
                     await _supabaseClient.from('payments').delete().eq('local_id', pay.id);
                 } else {
-                    await _supabaseClient.from('payments').upsert({
+                    const payPayload = {
                         local_id: pay.id,
                         customer_name: pay.customer,
                         payment_date: pay.date,
@@ -3274,7 +3295,13 @@
                         payment_method: pay.method || 'نقدي',
                         notes: pay.notes || '',
                         updated_at: new Date().toISOString()
-                    }, { onConflict: 'local_id' });
+                    };
+                    const { data: existing } = await _supabaseClient.from('payments').select('id').eq('local_id', pay.id).maybeSingle();
+                    if (existing && existing.id) {
+                        await _supabaseClient.from('payments').update(payPayload).eq('id', existing.id);
+                    } else {
+                        await _supabaseClient.from('payments').insert([payPayload]);
+                    }
                 }
             } catch(e) {
                 console.error("Cloud push payment error:", e);
