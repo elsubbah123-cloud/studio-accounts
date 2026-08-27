@@ -3041,10 +3041,12 @@
                 }
 
                 _realtimeChannel = _supabaseClient
-                    .channel('studio-erp-realtime-channel')
-                    .on('postgres_changes', { event: '*', schema: 'public' }, payload => {
-                        handleRealtimeEvent(payload);
-                    })
+                    .channel('studio-realtime-master')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, payload => handleRealtimeEvent(payload))
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => handleRealtimeEvent(payload))
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, payload => handleRealtimeEvent(payload))
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'invoice_items' }, payload => handleRealtimeEvent(payload))
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, payload => handleRealtimeEvent(payload))
                     .subscribe(status => {
                         if (status === 'SUBSCRIBED') {
                             updateCloudBadge('connected', 'السحابة: متصلة ومزامنة لحظياً (Realtime)');
@@ -3099,26 +3101,9 @@
                     products = products.filter(p => !(p.id == oldRec.id || (oldRec.local_id && p.id == oldRec.local_id) || (oldRec.name && oldRec.category && p.name === oldRec.name && p.category === oldRec.category)));
                     changed = true;
                 }
-            } else if (table === 'invoices') {
-                if (eventType === 'INSERT' || eventType === 'UPDATE') {
-                    const invId = Number(newRec.local_id || newRec.id);
-                    const idx = allInvoices.findIndex(i => i.id === invId);
-                    const invObj = {
-                        id: invId,
-                        customer: newRec.customer_name,
-                        date: (newRec.invoice_date || '').split(' ')[0],
-                        time: (newRec.invoice_date || '').split(' ')[1] || newRec.invoice_time || '14:00:00',
-                        discount: Number(newRec.discount) || 0,
-                        paid: Number(newRec.paid_amount) || 0,
-                        items: Array.isArray(newRec.items) ? newRec.items : []
-                    };
-                    if (idx >= 0) allInvoices[idx] = invObj;
-                    else allInvoices.unshift(invObj);
-                    changed = true;
-                } else if (eventType === 'DELETE' && oldRec) {
-                    allInvoices = allInvoices.filter(i => !(i.id == oldRec.id || (oldRec.local_id && i.id == oldRec.local_id)));
-                    changed = true;
-                }
+            } else if (table === 'invoices' || table === 'invoice_items') {
+                pullFromCloud(true);
+                return;
             } else if (table === 'payments') {
                 if (eventType === 'INSERT' || eventType === 'UPDATE') {
                     const payId = Number(newRec.local_id || newRec.id);
@@ -3127,7 +3112,7 @@
                         id: payId,
                         customer: newRec.customer_name,
                         date: newRec.payment_date,
-                        time: newRec.payment_time || '12:00:00',
+                        time: '12:00:00',
                         amount: Number(newRec.amount) || 0,
                         discount: Number(newRec.discount) || 0,
                         method: newRec.payment_method || 'نقدي',
@@ -3237,13 +3222,11 @@
                     const invPayload = {
                         local_id: inv.id,
                         customer_name: inv.customer,
-                        invoice_date: inv.date,
-                        invoice_time: inv.time || '14:00:00',
+                        invoice_date: `${inv.date} ${inv.time || '14:00:00'}`,
                         subtotal: subtotal,
                         discount: discount,
                         total: total,
                         paid_amount: Number(inv.paid) || 0,
-                        items: items,
                         updated_at: new Date().toISOString()
                     };
 
@@ -3289,7 +3272,6 @@
                         local_id: pay.id,
                         customer_name: pay.customer,
                         payment_date: pay.date,
-                        payment_time: pay.time || '12:00:00',
                         amount: Number(pay.amount) || 0,
                         discount: Number(pay.discount) || 0,
                         payment_method: pay.method || 'نقدي',
@@ -3494,6 +3476,12 @@
 
         // ================= INIT =================
         initSupabase();
+        // Background Heartbeat Sync: automatically sync any changes every 3 seconds
+        setInterval(() => {
+            if (_supabaseClient) {
+                pullFromCloud(true);
+            }
+        }, 3000);
         switchTab('dashboard');
     </script>
 </body>
