@@ -1998,13 +1998,25 @@
             }
         }
 
+        function naturalSortCompare(a, b) {
+            return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+        }
+
         // ================= 3. PRODUCTS LOGIC =================
         function renderProductsTable() {
             const query = (document.getElementById("prodSearchInput").value || "").trim().toLowerCase();
             const tbody = document.getElementById("productsTableBody");
             tbody.innerHTML = "";
 
-            let list = products;
+            let list = [...products];
+            list.sort((a, b) => {
+                const catCmp = naturalSortCompare(a.category, b.category);
+                if (catCmp !== 0) return catCmp;
+                const sizeCmp = naturalSortCompare(a.size, b.size);
+                if (sizeCmp !== 0) return sizeCmp;
+                return naturalSortCompare(a.name, b.name);
+            });
+
             if (query) {
                 list = list.filter(p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || (p.size && p.size.toLowerCase().includes(query)));
             }
@@ -2153,7 +2165,7 @@
         function renderCategoryButtons() {
             const catPad = document.getElementById("categoryPad");
             catPad.innerHTML = "";
-            const cats = [...new Set(products.map(p => p.category))];
+            const cats = [...new Set(products.map(p => p.category))].sort(naturalSortCompare);
             cats.forEach((cat, idx) => {
                 const btn = document.createElement("button");
                 btn.className = `pad-btn ${idx === 0 ? 'active' : ''}`;
@@ -2170,7 +2182,11 @@
 
             const subPad = document.getElementById("subsizePad");
             subPad.innerHTML = "";
-            const subList = products.filter(p => p.category === cat);
+            const subList = products.filter(p => p.category === cat).sort((a, b) => {
+                const sizeCmp = naturalSortCompare(a.size, b.size);
+                if (sizeCmp !== 0) return sizeCmp;
+                return naturalSortCompare(a.name, b.name);
+            });
             subList.forEach((it, idx) => {
                 const b = document.createElement("button");
                 b.className = `subsize-btn`;
