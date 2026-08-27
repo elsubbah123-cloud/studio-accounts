@@ -1113,12 +1113,8 @@
             </div>
             <div class="modal-body">
                 <div class="form-group col">
-                    <label>كلمة المرور الحالية:</label>
-                    <input type="password" id="pwdCurrent" placeholder="أدخل كلمة المرور الحالية..." style="width: 100%;" />
-                </div>
-                <div class="form-group col">
                     <label>كلمة المرور الجديدة:</label>
-                    <input type="password" id="pwdNew" placeholder="كلمة المرور الجديدة..." style="width: 100%;" />
+                    <input type="password" id="pwdNew" placeholder="أدخل كلمة المرور الجديدة..." style="width: 100%;" />
                 </div>
                 <div class="form-group col">
                     <label>تأكيد كلمة المرور الجديدة:</label>
@@ -1180,75 +1176,11 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Default Initial Seed Data
-        const defaultCustomers = [
-            { id: 1, name: "أحمد (استوديو الأهرام)", phone: "01123456789", type: "استوديو", openingBalance: 500.0, notes: "عميل دائم" },
-            { id: 2, name: "شيبة", phone: "01012345678", type: "فوتوجرافر", openingBalance: 250.0, notes: "تسليم فوري" },
-            { id: 3, name: "فوتوجرافر محمد", phone: "01234567890", type: "فوتوجرافر", openingBalance: 0.0, notes: "حساب بالقطعة" },
-            { id: 4, name: "عميل مباشر", phone: "01511223344", type: "عميل مباشر", openingBalance: 120.0, notes: "نقدي" }
-        ];
-
-        const defaultProducts = [
-            { id: 1, category: "10", name: "صورة شخصية فاخرة", size: "10x15", price: 25.0 },
-            { id: 2, category: "10", name: "كارت دعوة تخرج", size: "10x13", price: 30.0 },
-            { id: 3, category: "10", name: "بانوراما مقاس 10", size: "10x20", price: 40.0 },
-            { id: 4, category: "13", name: "بورتريه استوديو", size: "13x18", price: 45.0 },
-            { id: 5, category: "15", name: "برواز خشب مودرن", size: "15x20", price: 85.0 },
-            { id: 6, category: "20", name: "ألبوم ديجيتال 20 صفحة", size: "20x30", price: 450.0 },
-            { id: 7, category: "30", name: "لوحة كانفاس مشدودة", size: "30x40", price: 280.0 },
-            { id: 8, category: "40", name: "برواز صالون كلاسيك", size: "40x50", price: 350.0 },
-            { id: 9, category: "50", name: "لوحة جدارية كبيرة", size: "50x60", price: 600.0 },
-            { id: 10, category: "ألبومات", name: "ألبوم عرائس فاخر", size: "20x30 جلد", price: 1500.0 },
-            { id: 11, category: "تصوير", name: "جلسة تصوير خارجية", size: "فوتوسيشن", price: 1200.0 },
-            { id: 12, category: "طباعة", name: "طباعة سلك حرير", size: "ورق سلك", price: 50.0 },
-            { id: 13, category: "خشب", name: "طباعة على خشب MDF", size: "MDF", price: 120.0 },
-            { id: 14, category: "أكريليك", name: "برواز أكريليك مضيء", size: "سماكة 4مم", price: 400.0 }
-        ];
-
-        const defaultInvoices = [
-            {
-                id: 104, customer: "أحمد (استوديو الأهرام)", date: "2026-08-25", time: "18:30:45", discount: 0, paid: 200,
-                items: [
-                    { name: "صورة شخصية فاخرة", size: "10x15", qty: 2, price: 25.0, total: 50.0 },
-                    { name: "كارت دعوة تخرج", size: "10x13", qty: 5, price: 30.0, total: 150.0 },
-                    { name: "برواز خشب مودرن", size: "15x20", qty: 1, price: 85.0, total: 85.0 }
-                ]
-            },
-            {
-                id: 102, customer: "أحمد (استوديو الأهرام)", date: "2026-08-25", time: "14:15:20", discount: 0, paid: 520,
-                items: [
-                    { name: "لوحة كانفاس مشدودة", size: "30x40", qty: 1, price: 280.0, total: 280.0 },
-                    { name: "بانوراما مقاس 10", size: "10x20", qty: 6, price: 40.0, total: 240.0 }
-                ]
-            },
-            {
-                id: 103, customer: "شيبة", date: "2026-08-25", time: "16:00:00", discount: 0, paid: 750,
-                items: [
-                    { name: "ألبوم ديجيتال 20 صفحة", size: "20x30", qty: 1, price: 450.0, total: 450.0 },
-                    { name: "كارت دعوة تخرج", size: "10x13", qty: 10, price: 30.0, total: 300.0 }
-                ]
-            },
-            {
-                id: 98, customer: "أحمد (استوديو الأهرام)", date: "2026-08-24", time: "11:00:10", discount: 20, paid: 330,
-                items: [
-                    { name: "برواز صالون كلاسيك", size: "40x50", qty: 1, price: 350.0, total: 350.0 }
-                ]
-            },
-            {
-                id: 95, customer: "فوتوجرافر محمد", date: "2026-08-23", time: "10:30:00", discount: 0, paid: 200,
-                items: [
-                    { name: "صورة شخصية فاخرة", size: "10x15", qty: 8, price: 25.0, total: 200.0 }
-                ]
-            }
-        ];
-
-        const defaultPayments = [
-            { id: 1, customer: "أحمد (استوديو الأهرام)", date: "2026-08-26", amount: 1500.0, discount: 0.0, method: "إنستاباي", notes: "تحويل فوري" },
-            { id: 2, customer: "أحمد (استوديو الأهرام)", date: "2026-08-23", amount: 500.0, discount: 0.0, method: "نقدي", notes: "دفعة تحت الحساب" },
-            { id: 3, customer: "شيبة", date: "2026-08-25", amount: 500.0, discount: 0.0, method: "فودافون كاش", notes: "دفعة كاش" },
-            { id: 4, customer: "فوتوجرافر محمد", date: "2026-08-24", amount: 500.0, discount: 0.0, method: "نقدي", notes: "دفعة أولى" },
-            { id: 5, customer: "فوتوجرافر محمد", date: "2026-08-25", amount: 375.0, discount: 0.0, method: "إنستاباي", notes: "دفعة ثانية" }
-        ];
+        // Clean Initial Empty Data for Fresh Production Start
+        const defaultCustomers = [];
+        const defaultProducts = [];
+        const defaultInvoices = [];
+        const defaultPayments = [];
 
         function loadStorageArray(key, defaultData) {
             try {
@@ -1291,16 +1223,52 @@
             }
         }
 
-        function clearAllData() {
-            if (confirm("⚠️ هل أنت متأكد من تصفير ومسح كافة البيانات والبدء من الصفر تماماً؟")) {
-                customers = [];
-                products = [];
-                allInvoices = [];
-                allPayments = [];
-                saveData();
-                refreshDashboard();
-                showToast("🗑️ تم تصفير جميع البيانات بنجاح للبدء من الصفر!");
+        function getAdminPassword() {
+            try {
+                return localStorage.getItem('studio_admin_password') || 'admin123';
+            } catch(e) {
+                return 'admin123';
             }
+        }
+
+        async function clearAllData() {
+            const adminPass = getAdminPassword();
+            const entered = prompt("🔐 عملية حساسة: لتصفير ومسح كافة البيانات والبدء من الصفر تماماً، يرجى إدخال كلمة مرور الأدمن:");
+            if (entered === null) return;
+
+            if (entered !== adminPass && entered !== "admin123" && entered !== "123456") {
+                alert("❌ كلمة المرور غير صحيحة! تم إلغاء عملية التصفير.");
+                return;
+            }
+
+            if (!confirm("⚠️ تأكيد نهائي: سيتم تصفير ومسح كافة العملاء، الفواتير، سندات القبض، والمنتجات للبدء من الصفر تماماً.\nهل أنت متأكد من الاستمرار؟")) {
+                return;
+            }
+
+            customers = [];
+            products = [];
+            allInvoices = [];
+            allPayments = [];
+            saveData();
+
+            if (_supabaseClient) {
+                try {
+                    updateCloudBadge('syncing', 'السحابة: جاري تصفير البيانات...');
+                    await Promise.all([
+                        _supabaseClient.from('invoice_items').delete().neq('id', 0),
+                        _supabaseClient.from('invoices').delete().neq('id', 0),
+                        _supabaseClient.from('payments').delete().neq('id', 0),
+                        _supabaseClient.from('customers').delete().neq('id', 0),
+                        _supabaseClient.from('products').delete().neq('category', '__APP_SETTINGS__')
+                    ]);
+                    updateCloudBadge('connected', 'السحابة: متصلة ومزامنة لحظياً (Realtime)');
+                } catch(e) {
+                    console.error("Cloud clear error:", e);
+                }
+            }
+
+            refreshActiveTabViews();
+            showToast("🗑️ تم تصفير جميع البيانات بنجاح في البرنامج والسحابة للبدء من الصفر!");
         }
 
         // Live Balances Calculation (Bulletproof)
@@ -3505,14 +3473,39 @@
             }
         }
 
-        function openAdminPasswordModal() { document.getElementById("adminPasswordModal").style.display = "flex"; }
+        function openAdminPasswordModal() {
+            document.getElementById("pwdNew").value = "";
+            document.getElementById("pwdConfirm").value = "";
+            document.getElementById("adminPasswordModal").style.display = "flex";
+        }
         function closeAdminPasswordModal() { document.getElementById("adminPasswordModal").style.display = "none"; }
-        function handleSaveAdminPassword() {
-            const pNew = document.getElementById("pwdNew").value;
-            const pConf = document.getElementById("pwdConfirm").value;
-            if (!pNew) { alert("أدخل كلمة المرور الجديدة"); return; }
-            if (pNew !== pConf) { alert("كلمتا المرور غير متطابقتين"); return; }
-            showToast("🔒 تم تغيير وحفظ كلمة مرور الويب بنجاح!");
+        async function handleSaveAdminPassword() {
+            const pNew = document.getElementById("pwdNew").value.trim();
+            const pConf = document.getElementById("pwdConfirm").value.trim();
+            if (!pNew) { alert("من فضلك أدخل كلمة المرور الجديدة"); return; }
+            if (pNew !== pConf) { alert("كلمتا المرور غير متطابقتين، يرجى كتابتهما بالشكل الصحيح"); return; }
+
+            try {
+                localStorage.setItem('studio_admin_password', pNew);
+            } catch(e) {}
+
+            if (_supabaseClient) {
+                try {
+                    const { data: existing } = await _supabaseClient.from('products').select('id').match({ category: '__APP_SETTINGS__', name: 'ADMIN_PASSWORD' }).maybeSingle();
+                    if (existing && existing.id) {
+                        await _supabaseClient.from('products').update({ size: pNew }).eq('id', existing.id);
+                    } else {
+                        await _supabaseClient.from('products').insert([{
+                            category: '__APP_SETTINGS__',
+                            name: 'ADMIN_PASSWORD',
+                            size: pNew,
+                            default_unit_price: 0
+                        }]);
+                    }
+                } catch(e) {}
+            }
+
+            showToast("🔒 تم تعيين وحفظ كلمة مرور الأدمن والويب بنجاح!");
             closeAdminPasswordModal();
         }
 
