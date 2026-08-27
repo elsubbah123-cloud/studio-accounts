@@ -1089,7 +1089,7 @@
                 </div>
                 <div class="form-group col">
                     <label>Supabase API Key (مفتاح الـ API):</label>
-                    <input type="password" id="cfgCloudKey" value="sb_publishable_zJSR4sB3dZr9dyUT4kTRBQ_ATl8YqNW" style="width: 100%; font-family: monospace;" />
+                    <input type="password" id="cfgCloudKey" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpa3hrZ2hmamN5a3VrYXV1b3d6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzg1NTIsImV4cCI6MjEwMjY1NDU1Mn0.FHiiAi5LhQP8gew7fu-Y676159AP3k_2ssEAp9NqUKs" style="width: 100%; font-family: monospace;" />
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
                     <input type="checkbox" id="cfgAutoSync" checked style="width: 16px; height: 16px;" />
@@ -1170,7 +1170,7 @@
     <script>
         // Supabase Cloud Project Credentials
         const SUPABASE_URL = "https://uikxkghfjcykukauuowz.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_zJSR4sB3dZr9dyUT4kTRBQ_ATl8YqNW";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpa3hrZ2hmamN5a3VrYXV1b3d6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzg1NTIsImV4cCI6MjEwMjY1NDU1Mn0.FHiiAi5LhQP8gew7fu-Y676159AP3k_2ssEAp9NqUKs";
 
         // Default Initial Seed Data
         const defaultCustomers = [
@@ -2964,8 +2964,15 @@
 
         function getCloudConfig() {
             try {
-                const url = localStorage.getItem('studio_cloud_url') || SUPABASE_URL;
-                const key = localStorage.getItem('studio_cloud_key') || SUPABASE_KEY;
+                let url = localStorage.getItem('studio_cloud_url');
+                if (!url || !url.startsWith("http")) url = SUPABASE_URL;
+
+                let key = localStorage.getItem('studio_cloud_key');
+                if (!key || key.startsWith("sb_publishable_") || key.length < 50) {
+                    key = SUPABASE_KEY;
+                    try { localStorage.setItem('studio_cloud_key', key); } catch(e) {}
+                }
+
                 const autoSync = localStorage.getItem('studio_cloud_autosync') !== 'false';
                 return { url, key, autoSync };
             } catch(e) {
@@ -2976,22 +2983,37 @@
         function initSupabase() {
             try {
                 const cfg = getCloudConfig();
-                if (typeof window.supabase !== 'undefined' && window.supabase.createClient && cfg.url && cfg.key) {
-                    _supabaseClient = window.supabase.createClient(cfg.url, cfg.key, {
-                        realtime: {
-                            params: {
-                                eventsPerSecond: 10
+                const initClient = () => {
+                    if (typeof window.supabase !== 'undefined' && window.supabase.createClient && cfg.url && cfg.key) {
+                        _supabaseClient = window.supabase.createClient(cfg.url, cfg.key, {
+                            realtime: {
+                                params: {
+                                    eventsPerSecond: 10
+                                }
                             }
+                        });
+                        if (cfg.autoSync) {
+                            subscribeRealtime();
+                            pullFromCloud(true);
+                        } else {
+                            updateCloudBadge('idle', 'السحابة: متصلة (المزامنة اليدوية)');
                         }
-                    });
-                    if (cfg.autoSync) {
-                        subscribeRealtime();
-                        pullFromCloud(true);
                     } else {
-                        updateCloudBadge('idle', 'السحابة: متصلة (المزامنة اليدوية)');
+                        updateCloudBadge('idle', 'السحابة: غير مربوطة (محلي)');
                     }
+                };
+
+                if (typeof window.supabase === 'undefined') {
+                    let attempts = 0;
+                    const interval = setInterval(() => {
+                        attempts++;
+                        if (typeof window.supabase !== 'undefined' || attempts > 25) {
+                            clearInterval(interval);
+                            initClient();
+                        }
+                    }, 150);
                 } else {
-                    updateCloudBadge('idle', 'السحابة: غير مربوطة (محلي)');
+                    initClient();
                 }
             } catch(e) {
                 console.error("Supabase init error:", e);
@@ -3042,7 +3064,7 @@
 
             if (table === 'customers') {
                 if (eventType === 'INSERT' || eventType === 'UPDATE') {
-                    const idx = customers.findIndex(c => c.name === newRec.name || (newRec.local_id && c.id == newRec.local_id));
+                    const idx = customers.findIndex(c => c.name === newRec.name || (newRec.local_id && c.id == newRec.local_id) || c.id == newRec.id);
                     const custObj = {
                         id: Number(newRec.local_id || newRec.id),
                         name: newRec.name,
@@ -3055,24 +3077,26 @@
                     else customers.unshift(custObj);
                     changed = true;
                 } else if (eventType === 'DELETE' && oldRec) {
-                    customers = customers.filter(c => c.name !== oldRec.name && c.id != oldRec.local_id);
+                    customers = customers.filter(c => !(c.id == oldRec.id || (oldRec.local_id && c.id == oldRec.local_id) || (oldRec.name && c.name === oldRec.name)));
                     changed = true;
                 }
             } else if (table === 'products') {
                 if (eventType === 'INSERT' || eventType === 'UPDATE') {
-                    const idx = products.findIndex(p => p.name === newRec.name && p.category === newRec.category);
-                    const prodObj = {
-                        id: Number(newRec.local_id || newRec.id),
-                        category: newRec.category || 'عام',
-                        name: newRec.name,
-                        size: newRec.size || '',
-                        price: Number(newRec.default_unit_price) || 0
-                    };
-                    if (idx >= 0) products[idx] = prodObj;
-                    else products.push(prodObj);
-                    changed = true;
+                    if (newRec.category !== '__APP_SETTINGS__') {
+                        const idx = products.findIndex(p => p.name === newRec.name && p.category === newRec.category);
+                        const prodObj = {
+                            id: Number(newRec.local_id || newRec.id),
+                            category: newRec.category || 'عام',
+                            name: newRec.name,
+                            size: newRec.size || '',
+                            price: Number(newRec.default_unit_price) || 0
+                        };
+                        if (idx >= 0) products[idx] = prodObj;
+                        else products.push(prodObj);
+                        changed = true;
+                    }
                 } else if (eventType === 'DELETE' && oldRec) {
-                    products = products.filter(p => !(p.name === oldRec.name && p.category === oldRec.category));
+                    products = products.filter(p => !(p.id == oldRec.id || (oldRec.local_id && p.id == oldRec.local_id) || (oldRec.name && oldRec.category && p.name === oldRec.name && p.category === oldRec.category)));
                     changed = true;
                 }
             } else if (table === 'invoices') {
@@ -3082,8 +3106,8 @@
                     const invObj = {
                         id: invId,
                         customer: newRec.customer_name,
-                        date: newRec.invoice_date,
-                        time: newRec.invoice_time || '14:00:00',
+                        date: (newRec.invoice_date || '').split(' ')[0],
+                        time: (newRec.invoice_date || '').split(' ')[1] || newRec.invoice_time || '14:00:00',
                         discount: Number(newRec.discount) || 0,
                         paid: Number(newRec.paid_amount) || 0,
                         items: Array.isArray(newRec.items) ? newRec.items : []
@@ -3092,8 +3116,7 @@
                     else allInvoices.unshift(invObj);
                     changed = true;
                 } else if (eventType === 'DELETE' && oldRec) {
-                    const invId = Number(oldRec.local_id || oldRec.id);
-                    allInvoices = allInvoices.filter(i => i.id !== invId);
+                    allInvoices = allInvoices.filter(i => !(i.id == oldRec.id || (oldRec.local_id && i.id == oldRec.local_id)));
                     changed = true;
                 }
             } else if (table === 'payments') {
@@ -3114,8 +3137,7 @@
                     else allPayments.unshift(payObj);
                     changed = true;
                 } else if (eventType === 'DELETE' && oldRec) {
-                    const payId = Number(oldRec.local_id || oldRec.id);
-                    allPayments = allPayments.filter(p => p.id !== payId);
+                    allPayments = allPayments.filter(p => !(p.id == oldRec.id || (oldRec.local_id && p.id == oldRec.local_id)));
                     changed = true;
                 }
             }
@@ -3187,6 +3209,12 @@
             if (!_supabaseClient) return;
             try {
                 if (isDelete) {
+                    try {
+                        const { data: invRow } = await _supabaseClient.from('invoices').select('id').eq('local_id', inv.id).maybeSingle();
+                        if (invRow && invRow.id) {
+                            await _supabaseClient.from('invoice_items').delete().eq('invoice_id', invRow.id);
+                        }
+                    } catch(e) {}
                     await _supabaseClient.from('invoices').delete().eq('local_id', inv.id);
                 } else {
                     const items = Array.isArray(inv.items) ? inv.items : [];
@@ -3194,7 +3222,7 @@
                     const discount = Number(inv.discount) || 0;
                     const total = Math.max(0, subtotal - discount);
 
-                    await _supabaseClient.from('invoices').upsert({
+                    const { data: insertedInv } = await _supabaseClient.from('invoices').upsert({
                         local_id: inv.id,
                         customer_name: inv.customer,
                         invoice_date: inv.date,
@@ -3205,7 +3233,25 @@
                         paid_amount: Number(inv.paid) || 0,
                         items: items,
                         updated_at: new Date().toISOString()
-                    }, { onConflict: 'local_id' });
+                    }, { onConflict: 'local_id' }).select();
+
+                    if (insertedInv && insertedInv.length > 0) {
+                        const invDbId = insertedInv[0].id;
+                        try {
+                            await _supabaseClient.from('invoice_items').delete().eq('invoice_id', invDbId);
+                            const itemsToInsert = items.map(it => ({
+                                invoice_id: invDbId,
+                                product_name: it.name,
+                                size: it.size || '',
+                                quantity: Number(it.qty) || 1,
+                                unit_price: Number(it.price) || 0,
+                                total: Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0))
+                            }));
+                            if (itemsToInsert.length > 0) {
+                                await _supabaseClient.from('invoice_items').insert(itemsToInsert);
+                            }
+                        } catch(e) {}
+                    }
                 }
             } catch(e) {
                 console.error("Cloud push invoice error:", e);
@@ -3248,84 +3294,84 @@
             updateCloudBadge('syncing');
 
             try {
-                const [resCust, resProd, resInv, resPay] = await Promise.all([
+                const [resCust, resProd, resInv, resItm, resPay] = await Promise.all([
                     _supabaseClient.from('customers').select('*'),
                     _supabaseClient.from('products').select('*'),
                     _supabaseClient.from('invoices').select('*'),
+                    _supabaseClient.from('invoice_items').select('*'),
                     _supabaseClient.from('payments').select('*')
                 ]);
 
                 let changed = false;
 
                 if (resCust.data && resCust.data.length > 0) {
-                    resCust.data.forEach(c => {
-                        const idx = customers.findIndex(x => x.name === c.name || (c.local_id && x.id == c.local_id));
-                        const custObj = {
-                            id: Number(c.local_id || c.id),
-                            name: c.name,
-                            phone: c.phone || '',
-                            type: c.customer_type || 'استوديو',
-                            openingBalance: Number(c.opening_balance) || 0,
-                            notes: c.notes || ''
-                        };
-                        if (idx >= 0) customers[idx] = custObj;
-                        else customers.push(custObj);
-                    });
+                    customers = resCust.data.map(c => ({
+                        id: Number(c.local_id || c.id),
+                        name: c.name,
+                        phone: c.phone || '',
+                        type: c.customer_type || 'استوديو',
+                        openingBalance: Number(c.opening_balance) || 0,
+                        notes: c.notes || ''
+                    }));
                     changed = true;
                 }
 
                 if (resProd.data && resProd.data.length > 0) {
-                    resProd.data.forEach(p => {
-                        const idx = products.findIndex(x => x.name === p.name && x.category === p.category);
-                        const prodObj = {
+                    const validProds = resProd.data.filter(p => p.category !== '__APP_SETTINGS__');
+                    if (validProds.length > 0) {
+                        products = validProds.map(p => ({
                             id: Number(p.local_id || p.id),
                             category: p.category || 'عام',
                             name: p.name,
                             size: p.size || '',
                             price: Number(p.default_unit_price) || 0
-                        };
-                        if (idx >= 0) products[idx] = prodObj;
-                        else products.push(prodObj);
+                        }));
+                        changed = true;
+                    }
+                }
+
+                const invoiceItemsMap = {};
+                if (resItm.data && resItm.data.length > 0) {
+                    resItm.data.forEach(it => {
+                        if (!invoiceItemsMap[it.invoice_id]) invoiceItemsMap[it.invoice_id] = [];
+                        invoiceItemsMap[it.invoice_id].push({
+                            name: it.product_name,
+                            size: it.size || '',
+                            qty: Number(it.quantity) || 1,
+                            price: Number(it.unit_price) || 0,
+                            total: Number(it.total) || (Number(it.quantity || 1) * Number(it.unit_price || 0))
+                        });
                     });
-                    changed = true;
                 }
 
                 if (resInv.data && resInv.data.length > 0) {
-                    resInv.data.forEach(i => {
+                    allInvoices = resInv.data.map(i => {
                         const invId = Number(i.local_id || i.id);
-                        const idx = allInvoices.findIndex(x => x.id === invId);
-                        const invObj = {
+                        let items = Array.isArray(i.items) && i.items.length > 0 ? i.items : (invoiceItemsMap[i.id] || []);
+                        return {
                             id: invId,
                             customer: i.customer_name,
-                            date: i.invoice_date,
-                            time: i.invoice_time || '14:00:00',
+                            date: (i.invoice_date || '').split(' ')[0],
+                            time: (i.invoice_date || '').split(' ')[1] || i.invoice_time || '14:00:00',
                             discount: Number(i.discount) || 0,
                             paid: Number(i.paid_amount) || 0,
-                            items: Array.isArray(i.items) ? i.items : []
+                            items: items
                         };
-                        if (idx >= 0) allInvoices[idx] = invObj;
-                        else allInvoices.push(invObj);
                     });
                     changed = true;
                 }
 
                 if (resPay.data && resPay.data.length > 0) {
-                    resPay.data.forEach(p => {
-                        const payId = Number(p.local_id || p.id);
-                        const idx = allPayments.findIndex(x => x.id === payId);
-                        const payObj = {
-                            id: payId,
-                            customer: p.customer_name,
-                            date: p.payment_date,
-                            time: p.payment_time || '12:00:00',
-                            amount: Number(p.amount) || 0,
-                            discount: Number(p.discount) || 0,
-                            method: p.payment_method || 'نقدي',
-                            notes: p.notes || ''
-                        };
-                        if (idx >= 0) allPayments[idx] = payObj;
-                        else allPayments.push(payObj);
-                    });
+                    allPayments = resPay.data.map(p => ({
+                        id: Number(p.local_id || p.id),
+                        customer: p.customer_name,
+                        date: p.payment_date,
+                        time: p.payment_time || '12:00:00',
+                        amount: Number(p.amount) || 0,
+                        discount: Number(p.discount) || 0,
+                        method: p.payment_method || 'نقدي',
+                        notes: p.notes || ''
+                    }));
                     changed = true;
                 }
 
